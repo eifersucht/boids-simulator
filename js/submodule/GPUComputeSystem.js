@@ -69,6 +69,15 @@ function initComputeRenderer(renderer, resolution, bounds) {
     }
 }
 
+function setComputeState(nextState) {
+    gpu_allocation = nextState.gpu_allocation;
+    velocity_variable = nextState.velocity_variable;
+    position_variable = nextState.position_variable;
+    uniform_position = position_variable.material.uniforms;
+    uniform_velocity = velocity_variable.material.uniforms;
+    currentResolution = nextState.currentResolution;
+}
+
 function fillPositionTexture(texture) {
     const array = texture.image.data;
     for (let i = 0; i < array.length; i += 4) {
@@ -91,6 +100,7 @@ function fillVelocityTexture(texture) {
 
 export {
     initComputeRenderer,
+    setComputeState,
     gpu_allocation,
     velocity_variable,
     position_variable,

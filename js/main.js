@@ -1,6 +1,6 @@
 // js/main.js
 
-import { initScene, scene, camera, renderer } from './submodule/sceneSetup.js';
+import { initScene, onWindowResize, scene, camera, renderer } from './submodule/sceneSetup.js';
 import { initBirds, birdMeshes, leaderMesh, predatorMesh, updateLeader, updatePredator, leaderPosition, leaderVelocity, leaderAcceleration, predatorPosition, predatorVelocity } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
 import { initComputeRenderer, gpu_allocation, velocity_variable, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
@@ -12,15 +12,18 @@ let initialBoidsCount;
 const countInputElement = document.getElementById('boidCount');
 if (countInputElement) {
     // Si hay un input para la cantidad de boids, usar su valor inicial
-    initialBoidsCount = parseInt(countInputElement.value) || (64 * 64);
+    const parsedCount = parseInt(countInputElement.value, 10);
+    initialBoidsCount = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : (64 * 64);
 } else {
     // Si no, usar el valor en la URL (hash) o el predeterminado 64*64
     const hash = document.location.hash.substr(1);
-    const hashValue = hash ? parseInt(hash, 0) : 64;
-    initialBoidsCount = hashValue * hashValue;
+    const hashValue = hash ? parseInt(hash, 10) : 64;
+    const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : 64;
+    initialBoidsCount = normalizedHash * normalizedHash;
 }
 // Mostrar la cantidad inicial en el elemento indicador de boids
-document.getElementById('birds').innerText = initialBoidsCount;
+const birdsLabel = document.getElementById('birds');
+if (birdsLabel) birdsLabel.innerText = initialBoidsCount;
 
 // Calcular la resolución inicial para el GPUComputeRenderer (textura cuadrada que contenga a todos los boids)
 const initialResolution = Math.ceil(Math.sqrt(initialBoidsCount));
@@ -44,6 +47,7 @@ function init() {
     createRecordingButton();
     // Registrar eventos de teclado para grabación (tecla 'v' para iniciar, 's' para detener)
     document.addEventListener('keydown', onKeyDown, false);
+    window.addEventListener('resize', onWindowResize, false);
 }
 
 function animate() {
@@ -78,8 +82,13 @@ function render() {
     uniform_velocity.leaderAcceleration.value.copy(leaderAcceleration);
 
     // Calcular fuerzas de frenado y giro del líder para pasarlas a los shaders
-    const brakingForce = Math.max(0.0, -leaderAcceleration.length());
-    const turningForce = Math.max(0.0, Math.abs(leaderAcceleration.length()));
+    let brakingForce = 0.0;
+    const leaderSpeed = leaderVelocity.length();
+    if (leaderSpeed > 0) {
+        const accelAlongVelocity = leaderAcceleration.dot(leaderVelocity) / leaderSpeed;
+        brakingForce = Math.max(0.0, -accelAlongVelocity);
+    }
+    const turningForce = Math.max(0.0, leaderAcceleration.length());
     uniform_velocity.leaderBrakingForce.value = brakingForce;
     uniform_velocity.leaderTurningForce.value = turningForce;
 
@@ -89,7 +98,10 @@ function render() {
     // Leer las posiciones calculadas de los boids desde la textura de posición GPU
     const width = currentResolution;
     const height = currentResolution;
-    const readPixels = new Float32Array(width * height * 4);
+    if (!render.readPixelsBuffer || render.readPixelsBuffer.length !== width * height * 4) {
+        render.readPixelsBuffer = new Float32Array(width * height * 4);
+    }
+    const readPixels = render.readPixelsBuffer;
     renderer.readRenderTargetPixels(
         gpu_allocation.getCurrentRenderTarget(position_variable),
         0, 0, width, height,
@@ -117,9 +129,27 @@ let recordingTimerInterval = null;
 function startRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') return;
     recordedChunks = [];
+    if (!window.MediaRecorder) {
+        alert('MediaRecorder no esta disponible en este navegador.');
+        return;
+    }
     // Capturar la salida del canvas como stream de vídeo a 60 FPS
     const stream = renderer.domElement.captureStream(60);
-    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp8' });
+    const options = {};
+    if (MediaRecorder.isTypeSupported) {
+        if (MediaRecorder.isTypeSupported('video/webm; codecs=vp8')) {
+            options.mimeType = 'video/webm; codecs=vp8';
+        } else if (MediaRecorder.isTypeSupported('video/webm')) {
+            options.mimeType = 'video/webm';
+        }
+    }
+    try {
+        mediaRecorder = new MediaRecorder(stream, options);
+    } catch (error) {
+        console.error('No se pudo iniciar MediaRecorder:', error);
+        alert('No se pudo iniciar la grabacion en este navegador.');
+        return;
+    }
     mediaRecorder.ondataavailable = function(event) {
         if (event.data.size > 0) {
             recordedChunks.push(event.data);
@@ -146,13 +176,13 @@ function startRecording() {
     recordingStartTime = Date.now();
     recordingTimerInterval = setInterval(updateRecordingTime, 1000);
     updateRecordingUI(true);
-    console.log('🎥 Grabación iniciada');
+    console.log('Grabacion iniciada');
 }
 
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
-        console.log('🛑 Grabación detenida');
+        console.log('Grabacion detenida');
     }
 }
 
@@ -166,7 +196,7 @@ function createRecordingButton() {
 
     const button = document.createElement('button');
     button.id = 'startStopRecording';
-    button.innerText = '🎥 Grabar';
+    button.innerText = 'Grabar';
     button.style.padding = '10px 20px';
     container.style.background = 'white';
     container.style.color = 'black';
@@ -187,7 +217,7 @@ function createRecordingButton() {
 
     const recordingInfo = document.createElement('div');
     recordingInfo.id = 'recordingInfo';
-    recordingInfo.style.color = 'white';
+    recordingInfo.style.color = 'black';
     recordingInfo.style.fontSize = '14px';
     recordingInfo.style.marginTop = '4px';
 
@@ -200,10 +230,10 @@ function updateRecordingUI(isRecording) {
     const button = document.getElementById('startStopRecording');
     const info = document.getElementById('recordingInfo');
     if (isRecording) {
-        button.innerHTML = '🔴 Grabando...';
-        info.innerText = 'Duración: 00:00';
+        button.innerHTML = 'Grabando...';
+        info.innerText = 'Duracion: 00:00';
     } else {
-        button.innerHTML = '🎥 Grabar';
+        button.innerHTML = 'Grabar';
         info.innerText = '';
     }
 }
@@ -214,7 +244,7 @@ function updateRecordingTime() {
     const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
     const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const seconds = (elapsed % 60).toString().padStart(2, '0');
-    info.innerText = `Duración: ${minutes}:${seconds}`;
+    info.innerText = `Duracion: ${minutes}:${seconds}`;
 }
 
 function onKeyDown(event) {

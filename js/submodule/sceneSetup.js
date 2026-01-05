@@ -29,8 +29,15 @@ function initScene() {
     controls.maxPolarAngle = Math.PI / 2 + angleOffset; // 95 grados
 }
 
+function onWindowResize() {
+    if (!camera || !renderer) return;
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
 function render() {
     renderer.render(scene, camera);
 }
 
-export { initScene, scene, camera, renderer };
+export { initScene, onWindowResize, scene, camera, renderer };

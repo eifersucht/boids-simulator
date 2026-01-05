@@ -184,9 +184,13 @@ function initBirds(scene, renderer) {
     });
 
     document.getElementById('applyBoidCount').addEventListener('click', () => {
-        const nuevoNumero = parseInt(document.getElementById('boidCount').value);
-        const confirmReload = confirm(`El navegador se va a reiniciar para aplicar el nuevo número de boids (${nuevoNumero}). ¿Desea continuar?`);
-    
+        const nuevoNumero = parseInt(document.getElementById('boidCount').value, 10);
+        if (!Number.isFinite(nuevoNumero) || nuevoNumero < 1) {
+            alert('Cantidad de boids invalida.');
+            return;
+        }
+        const confirmReload = confirm(`El navegador se va a reiniciar para aplicar el nuevo numero de boids (${nuevoNumero}). Desea continuar?`);
+
         if (confirmReload) {
             ajustarCantidadBoids(nuevoNumero);
         }
@@ -199,22 +203,6 @@ function initBirds(scene, renderer) {
         }
     });
 
-    function cambiarVelocidadBoids(nuevaVelocidad) {
-        boidSpeedMultiplier = nuevaVelocidad;
-    
-        // Asigna el valor al uniform del shader
-        if (Compute.uniform_velocity && Compute.uniform_velocity.boidSpeed) {
-            Compute.uniform_velocity.boidSpeed.value = boidSpeedMultiplier;
-        }
-    
-        // Reflejar el nuevo valor en el input y en el HUD
-        const input = document.getElementById('boidSpeed');
-        if (input) input.value = boidSpeedMultiplier.toFixed(1);
-    
-        updateHUD();
-    }
-
-
     // Inicializar el valor de velocidad de los boids en el input
     document.getElementById('boidSpeed').value = boidSpeedMultiplier.toFixed(1);
 
@@ -226,20 +214,6 @@ function initBirds(scene, renderer) {
     if (colorInput) {
         colorInput.addEventListener('input', () => {
             cambiarColorBoids(colorInput.value);
-        });
-    }
-    const sizeInput = document.getElementById('boidSize');
-    if (sizeInput) {
-        sizeInput.addEventListener('input', () => {
-            const nuevoTamano = parseFloat(sizeInput.value);
-            cambiarTamanoBoids(nuevoTamano);
-        });
-    }
-    const agresividadInput = document.getElementById('agresividad');
-    if (agresividadInput) {
-        agresividadInput.addEventListener('input', () => {
-            const nuevaAgresividad = parseFloat(agresividadInput.value);
-            cambiarAgresividad(nuevaAgresividad);
         });
     }
     // Crear botón de toggle para mostrar/ocultar el HUD
@@ -313,6 +287,9 @@ function updatePredator(delta) {
     predatorChangeTimer -= delta;
     if (predatorChangeTimer <= 0) {
         // Calcular el centro de la bandada (promedio de posiciones de todos los boids)
+        if (birdMeshes.length === 0) {
+            return;
+        }
         let center = new THREE.Vector3();
         for (let i = 0; i < birdMeshes.length; i++) {
             center.add(birdMeshes[i].position);
@@ -352,14 +329,15 @@ function updatePredator(delta) {
 
 // Actualiza la información mostrada en el HUD (velocidad del líder y visibilidad de líder/depredador)
 function updateHUD() {
-    document.getElementById('speedInfo').innerText = `Velocidad líder: ${leaderSpeedMultiplier.toFixed(2)}x`;
+    document.getElementById('speedInfo').innerText = `Velocidad lider: ${leaderSpeedMultiplier.toFixed(2)}x`;
     document.getElementById('boidSpeedInfo').innerText = `Velocidad boids: ${boidSpeedMultiplier.toFixed(2)}x`;
-    document.getElementById('leaderInfo').innerText = `Líder: ${leaderVisible ? 'Visible' : 'Oculto'}`;
+    document.getElementById('leaderInfo').innerText = `Lider: ${leaderVisible ? 'Visible' : 'Oculto'}`;
     document.getElementById('predatorInfo').innerText = `Depredador: ${predatorVisible ? 'Visible' : 'Oculto'}`;
 }
 
 // Agrega o elimina boids dinámicamente en la escena y en la simulación según la nueva cantidad solicitada
 function ajustarCantidadBoids(nuevoNumero) {
+    if (!Number.isFinite(nuevoNumero) || nuevoNumero < 1) return;
     // Actualiza el indicador de cantidad de boids en la interfaz
     const birdsLabel = document.getElementById('birds');
     if (birdsLabel) birdsLabel.innerText = nuevoNumero;
@@ -398,6 +376,8 @@ function cambiarVelocidadBoids(nuevaVelocidad) {
     if (Compute.uniform_velocity && Compute.uniform_velocity.boidSpeed) {
         Compute.uniform_velocity.boidSpeed.value = boidSpeedMultiplier;
     }
+    const input = document.getElementById('boidSpeed');
+    if (input) input.value = boidSpeedMultiplier.toFixed(1);
     updateHUD(); // <- Para que se refleje en el HUD al cambiar
 }
 
@@ -500,14 +480,13 @@ function reinitComputeSystem(nuevoNumero) {
     if (error !== null) {
         console.error(error);
     }
-    // Reemplazar las referencias globales del sistema de computación por las nuevas
-    Compute.gpu_allocation = newCompute;
-    Compute.velocity_variable = velVar;
-    Compute.position_variable = posVar;
-    Compute.uniform_position = posVar.material.uniforms;
-    Compute.uniform_velocity = velVar.material.uniforms;
-    Compute.currentResolution = newRes;
-    Compute.uniform_velocity = velVar.material.uniforms;
+    // Reemplazar el estado en el modulo de computacion GPU con las nuevas referencias
+    Compute.setComputeState({
+        gpu_allocation: newCompute,
+        velocity_variable: velVar,
+        position_variable: posVar,
+        currentResolution: newRes
+    });
 
 }
 
