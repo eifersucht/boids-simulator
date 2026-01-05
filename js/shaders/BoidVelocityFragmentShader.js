@@ -1,0 +1,129 @@
+// js/shaders/BoidVelocityFragmentShader.js
+
+export const BoidVelocityFragmentShader = `
+    uniform float clock;
+    uniform float testing;
+    uniform float del_change;
+    uniform float seperation_distance;
+    uniform float alignment_distance;
+    uniform float cohesion_distance;
+    uniform float freedom_distance;
+    uniform vec3 predator;
+    uniform vec3 globalDrift;
+    uniform vec3 leader;
+    uniform vec3 leaderVelocity;
+    uniform vec3 leaderAcceleration;
+    uniform float leaderBrakingForce;
+    uniform float leaderTurningForce;
+    uniform vec3 windField;
+    uniform float groupInertia;
+    uniform float vortexStrength;
+    uniform float boidSpeed;
+
+    const float width = resolution.x;
+    const float height = resolution.y;
+    const float PI = 3.14159;
+    const float PI_2 = PI * 2.0;
+
+    float zoneRadius;
+    float zoneRadiusSquared;
+    float separationThresh;
+    float alignmentThresh;
+
+    const float UPPER_bounds = bounds;
+    const float LOWER_bounds = -UPPER_bounds;
+    const float SPEED_LIMIT = 10.0;
+
+    void main() {
+        zoneRadius = seperation_distance + alignment_distance + cohesion_distance;
+        separationThresh = seperation_distance / zoneRadius;
+        alignmentThresh = (seperation_distance + alignment_distance) / zoneRadius;
+        zoneRadiusSquared = zoneRadius * zoneRadius;
+
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec3 birdPosition = texture2D(PositionTexture, uv).xyz;
+        vec3 birdVelocity = texture2D(VelocityTexture, uv).xyz;
+
+        vec3 velocity = birdVelocity;
+        float limit = SPEED_LIMIT;
+
+        vec3 predatorDir = birdPosition - predator;
+        float predatorDist = length(predatorDir);
+        if (predatorDist < 60.0) {
+            float strength = (1.0 - (predatorDist / 60.0)) * del_change * 100.0;
+            velocity += normalize(predatorDir) * strength;
+            limit += 10.0;
+        }
+
+        vec3 toCenter = birdPosition * 0.0025;
+        toCenter.y *= 0.5;
+        velocity -= toCenter * del_change;
+
+        vec3 neighborhoodCenter = vec3(0.0);
+        vec3 averageVelocity = vec3(0.0);
+        float neighborCount = 0.0;
+
+        for (float y = 0.0; y < height; y++) {
+            for (float x = 0.0; x < width; x++) {
+                vec2 ref = vec2(x + 0.5, y + 0.5) / resolution.xy;
+                vec3 otherPos = texture2D(PositionTexture, ref).xyz;
+                vec3 otherVel = texture2D(VelocityTexture, ref).xyz;
+
+                vec3 offset = otherPos - birdPosition;
+                offset.y *= 0.5;
+                float distSq = dot(offset, offset);
+
+                if (distSq > 0.0001 && distSq < zoneRadiusSquared) {
+                    neighborhoodCenter += otherPos;
+                    averageVelocity += otherVel;
+                    neighborCount += 1.0;
+
+                    if (distSq < separationThresh * zoneRadiusSquared) {
+                        velocity -= normalize(offset) * del_change * 1.5;
+                    }
+                }
+            }
+        }
+
+        if (neighborCount > 0.0) {
+            neighborhoodCenter /= neighborCount;
+            averageVelocity /= neighborCount;
+
+            vec3 toNeighborsCenter = neighborhoodCenter - birdPosition;
+            toNeighborsCenter.y *= 0.5;
+            velocity += normalize(toNeighborsCenter) * del_change * 0.5;
+            velocity += normalize(averageVelocity) * del_change * 0.5;
+        }
+
+        vec3 toLeader = leader - birdPosition;
+        velocity += normalize(toLeader) * del_change * 4.0;
+
+        float time = clock * 0.001;
+        vec3 randomDir = normalize(vec3(
+            sin(time + birdPosition.y * 0.5),
+            cos(time + birdPosition.x * 0.8),
+            sin(time + birdPosition.z * 0.6)
+        ));
+        velocity = mix(velocity, velocity + randomDir, 0.2 * del_change);
+
+        if (vortexStrength > 0.0) {
+            vec3 toSelf = birdPosition - leader;
+            float distVortex = length(toSelf) + 0.01;
+            vec3 vortexForce = normalize(cross(toSelf, vec3(0.0, 1.0, 0.0))) / distVortex;
+            velocity += vortexForce * vortexStrength * del_change * 15.0;
+        }
+
+        velocity.y -= birdPosition.y * 0.008 * del_change;
+        velocity += normalize(globalDrift + windField) * del_change;
+
+        // Aplica multiplicador ANTES del límite
+        velocity *= boidSpeed;
+
+        float velLength = length(velocity);
+        if (velLength > limit) {
+            velocity = normalize(velocity) * limit;
+        }
+
+        gl_FragColor = vec4(velocity, 1.0);
+    }
+`;

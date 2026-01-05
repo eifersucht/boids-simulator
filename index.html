@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Flocking Simulation</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<!-- Place this tag in your head or just before your close body tag. -->
+		<link rel="stylesheet" href="css/style.css">
+		<!-- Favicon básico -->
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+		<link rel="shortcut icon" href="/favicon.ico">
+
+		<!-- Apple Touch Icon -->
+		<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+		<!-- Android Icons -->
+		<link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
+		<link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png">
+
+		<!-- Manifest para PWA -->
+		<link rel="manifest" href="/site.webmanifest">
+
+		<!-- Metadatos opcionales -->
+		<meta name="theme-color" content="#ffffff">
+		<style>
+			body {
+				margin: 0px;
+				overflow: hidden;
+				cursor: pointer;
+			}
+		</style>
+
+	</head>
+	<body>
+		<div id="info" style="margin-top: -6%;">
+			<span id="birds"></span>
+		</div>
+		
+		
+
+		<script src="js/three.js"></script>
+		<script src="js/Detector.js"></script>
+		<script src="js/GPUComputationRenderer.js"></script>
+		<script src="js/OrbitControls.js"></script>
+		<script src="js/KeyboardState.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/dat.gui/build/dat.gui.min.js"></script>
+
+		<script type="module" src="js/main.js"></script>
+	</body>
+</html>
