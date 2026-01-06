@@ -162,7 +162,12 @@ function initBirds(scene, renderer) {
         <input type="number" id="boidSpeed" value="1.0" min="0.1" max="10" step="0.1"><br><br>
 
         <label>Agresividad del depredador:</label><br>
-        <input type="number" id="agresividad" value="1.0" min="0" max="10" step="0.1">
+        <input type="number" id="agresividad" value="1.0" min="0" max="10" step="0.1"><br><br>
+
+        <label>
+            <input type="checkbox" id="predatorVisibleToggle">
+            Mostrar depredador
+        </label>
     </div>
     `;
 
@@ -200,6 +205,16 @@ function initBirds(scene, renderer) {
         const nuevaAgresividad = parseFloat(e.target.value);
         cambiarAgresividad(nuevaAgresividad);
     });
+
+    const predatorToggle = document.getElementById('predatorVisibleToggle');
+    if (predatorToggle) {
+        predatorToggle.checked = predatorVisible;
+        predatorToggle.addEventListener('change', (e) => {
+            predatorVisible = e.target.checked;
+            predatorMesh.visible = predatorVisible;
+            updateHUD();
+        });
+    }
 
     document.getElementById('applyBoidCount').addEventListener('click', () => {
         const nuevoNumero = parseInt(document.getElementById('boidCount').value, 10);

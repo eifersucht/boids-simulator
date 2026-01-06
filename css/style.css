@@ -1,7 +1,14 @@
 html, body {
 			background-color: transparent;
+			width: 100%;
+			height: 100%;
+			margin: 0;
 			overflow: hidden;
 			cursor: pointer;
+		}
+
+		canvas {
+			display: block;
 		}
 
 		#hud {
