@@ -1,6 +1,7 @@
 // js/main.js
 
 import { initScene, onWindowResize, scene, camera, renderer } from './submodule/sceneSetup.js';
+import { CONFIG } from './config.js';
 import { initBirds, birdMeshes, leaderMesh, predatorMesh, updateLeader, updatePredator, leaderPosition, leaderVelocity, leaderAcceleration, predatorPosition, predatorVelocity } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
 import { initComputeRenderer, gpu_allocation, velocity_variable, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
@@ -13,12 +14,13 @@ const countInputElement = document.getElementById('boidCount');
 if (countInputElement) {
     // Si hay un input para la cantidad de boids, usar su valor inicial
     const parsedCount = parseInt(countInputElement.value, 10);
-    initialBoidsCount = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : (64 * 64);
+    const fallbackCount = CONFIG.defaultGridSize * CONFIG.defaultGridSize;
+    initialBoidsCount = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : fallbackCount;
 } else {
     // Si no, usar el valor en la URL (hash) o el predeterminado 64*64
     const hash = document.location.hash.substr(1);
-    const hashValue = hash ? parseInt(hash, 10) : 64;
-    const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : 64;
+    const hashValue = hash ? parseInt(hash, 10) : CONFIG.defaultGridSize;
+    const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : CONFIG.defaultGridSize;
     initialBoidsCount = normalizedHash * normalizedHash;
 }
 // Mostrar la cantidad inicial en el elemento indicador de boids
@@ -29,7 +31,7 @@ if (birdsLabel) birdsLabel.innerText = initialBoidsCount;
 const initialResolution = Math.ceil(Math.sqrt(initialBoidsCount));
 
 let last = performance.now();
-const bounds = 600;
+const bounds = CONFIG.bounds;
 
 init();
 animate();
@@ -40,7 +42,7 @@ function init() {
     // Inicializar el sistema de computación GPU para la simulación de boids
     initComputeRenderer(renderer, initialResolution, bounds);
 
-    uniform_velocity.boidSpeed.value = 1.0;
+    uniform_velocity.boidSpeed.value = CONFIG.boids.speedDefault;
     // Inicializar boids, líder y depredador en la escena, pasándole el renderer para gestión dinámica
     initBirds(scene, renderer);
     // Crear botón para iniciar/detener grabación de vídeo
@@ -59,7 +61,7 @@ function render() {
     const now = performance.now();
     // Calcular intervalo de tiempo (delta) desde el último frame en segundos
     let delta = (now - last) / 1000;
-    if (delta > 1) delta = 1;  // Limitar delta para evitar saltos bruscos
+    if (delta > CONFIG.maxDeltaSeconds) delta = CONFIG.maxDeltaSeconds;  // Limitar delta para evitar saltos bruscos
     last = now;
 
     // Actualizar uniformes de tiempo en shaders de posición y velocidad de boids
@@ -134,7 +136,7 @@ function startRecording() {
         return;
     }
     // Capturar la salida del canvas como stream de vídeo a 60 FPS
-    const stream = renderer.domElement.captureStream(60);
+    const stream = renderer.domElement.captureStream(CONFIG.recording.fps);
     const options = {};
     if (MediaRecorder.isTypeSupported) {
         if (MediaRecorder.isTypeSupported('video/webm; codecs=vp8')) {
