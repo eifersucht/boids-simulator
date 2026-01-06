@@ -40,6 +40,7 @@ let currentBoidSize = 3;  // Tamaño actual (radio) de los boids
 // Referencias al renderer y a la escena, para añadir/eliminar boids dinámicamente
 let rendererRef;
 let sceneRef;
+let hudElements = null;
 
 /**
  * Inicializa las entidades de la simulación (boids, líder, depredador) y configura eventos.
@@ -166,12 +167,29 @@ function initBirds(scene, renderer) {
     `;
 
     document.body.appendChild(hud);
+    hudElements = {
+        speedInfo: document.getElementById('speedInfo'),
+        boidSpeedInfo: document.getElementById('boidSpeedInfo'),
+        leaderInfo: document.getElementById('leaderInfo'),
+        predatorInfo: document.getElementById('predatorInfo')
+    };
     updateHUD();
 
     // Eventos para los inputs nuevos
-    document.getElementById('bgColor').addEventListener('input', (e) => {
-        document.body.style.backgroundColor = e.target.value;
-    });
+    const bgColorInput = document.getElementById('bgColor');
+    if (bgColorInput) {
+        bgColorInput.addEventListener('input', (e) => {
+            const color = e.target.value;
+            document.body.style.backgroundColor = color;
+            document.documentElement.style.backgroundColor = color;
+            if (rendererRef) {
+                rendererRef.setClearColor(color, 1);
+                if (rendererRef.domElement) {
+                    rendererRef.domElement.style.backgroundColor = color;
+                }
+            }
+        });
+    }
 
     document.getElementById('boidSize').addEventListener('input', (e) => {
         const nuevoTamano = parseFloat(e.target.value);
@@ -207,7 +225,17 @@ function initBirds(scene, renderer) {
     document.getElementById('boidSpeed').value = boidSpeedMultiplier.toFixed(1);
 
     // Inicializar el color de fondo
-    document.body.style.backgroundColor = document.getElementById('bgColor').value;
+    if (bgColorInput) {
+        const initialBg = bgColorInput.value;
+        document.body.style.backgroundColor = initialBg;
+        document.documentElement.style.backgroundColor = initialBg;
+        if (rendererRef) {
+            rendererRef.setClearColor(initialBg, 1);
+            if (rendererRef.domElement) {
+                rendererRef.domElement.style.backgroundColor = initialBg;
+            }
+        }
+    }
 
     // Configurar eventos para inputs de la interfaz:
     const colorInput = document.getElementById('boidColor');
@@ -329,10 +357,19 @@ function updatePredator(delta) {
 
 // Actualiza la información mostrada en el HUD (velocidad del líder y visibilidad de líder/depredador)
 function updateHUD() {
-    document.getElementById('speedInfo').innerText = `Velocidad lider: ${leaderSpeedMultiplier.toFixed(2)}x`;
-    document.getElementById('boidSpeedInfo').innerText = `Velocidad boids: ${boidSpeedMultiplier.toFixed(2)}x`;
-    document.getElementById('leaderInfo').innerText = `Lider: ${leaderVisible ? 'Visible' : 'Oculto'}`;
-    document.getElementById('predatorInfo').innerText = `Depredador: ${predatorVisible ? 'Visible' : 'Oculto'}`;
+    if (!hudElements) return;
+    if (hudElements.speedInfo) {
+        hudElements.speedInfo.innerText = `Velocidad lider: ${leaderSpeedMultiplier.toFixed(2)}x`;
+    }
+    if (hudElements.boidSpeedInfo) {
+        hudElements.boidSpeedInfo.innerText = `Velocidad boids: ${boidSpeedMultiplier.toFixed(2)}x`;
+    }
+    if (hudElements.leaderInfo) {
+        hudElements.leaderInfo.innerText = `Lider: ${leaderVisible ? 'Visible' : 'Oculto'}`;
+    }
+    if (hudElements.predatorInfo) {
+        hudElements.predatorInfo.innerText = `Depredador: ${predatorVisible ? 'Visible' : 'Oculto'}`;
+    }
 }
 
 // Agrega o elimina boids dinámicamente en la escena y en la simulación según la nueva cantidad solicitada
@@ -492,6 +529,16 @@ function reinitComputeSystem(nuevoNumero) {
 
 // Eventos de teclado globales para controlar velocidad del líder y visibilidad de líder/depredador
 window.addEventListener('keydown', (event) => {
+    const target = event.target;
+    if (
+        target &&
+        (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable)
+    ) {
+        return;
+    }
     if (event.key === '+' || (event.key === '=' && event.shiftKey)) {
         // Aumentar velocidad del líder
         leaderSpeedMultiplier += 0.1;

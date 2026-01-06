@@ -248,6 +248,16 @@ function updateRecordingTime() {
 }
 
 function onKeyDown(event) {
+    const target = event.target;
+    if (
+        target &&
+        (target.tagName === 'INPUT' ||
+            target.tagName === 'TEXTAREA' ||
+            target.tagName === 'SELECT' ||
+            target.isContentEditable)
+    ) {
+        return;
+    }
     // Tecla 'v' para iniciar grabación, 's' para detener
     if (event.key === 'v' || event.key === 'V') {
         startRecording();
