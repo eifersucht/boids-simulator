@@ -152,6 +152,7 @@ function initBirds(scene, renderer) {
     <div id="boidSpeedInfo"></div>
     <div id="leaderInfo"></div>
     <div id="predatorInfo"></div>
+    <div id="performanceInfo"></div>
     <hr>
     <div>
         <label>Cantidad de boids:</label><br>
@@ -177,7 +178,8 @@ function initBirds(scene, renderer) {
         speedInfo: document.getElementById('speedInfo'),
         boidSpeedInfo: document.getElementById('boidSpeedInfo'),
         leaderInfo: document.getElementById('leaderInfo'),
-        predatorInfo: document.getElementById('predatorInfo')
+        predatorInfo: document.getElementById('predatorInfo'),
+        performanceInfo: document.getElementById('performanceInfo')
     };
     const predatorsPanel = document.getElementById('predatorsPanel');
     if (predatorsPanel) {
@@ -419,6 +421,11 @@ function updateHUD() {
     }
 }
 
+function updatePerformanceHUD(fps, frameMs) {
+    if (!hudElements || !hudElements.performanceInfo) return;
+    hudElements.performanceInfo.innerText = `FPS: ${fps.toFixed(1)} | Frame: ${frameMs.toFixed(2)} ms`;
+}
+
 // Agrega o elimina boids dinámicamente en la escena y en la simulación según la nueva cantidad solicitada
 function ajustarCantidadBoids(nuevoNumero) {
     if (!Number.isFinite(nuevoNumero) || nuevoNumero < 1) return;
@@ -517,6 +524,7 @@ export {
     leaderVelocity,
     leaderAcceleration,
     getActivePredatorPositions,
+    updatePerformanceHUD,
     updateLeader,
     updatePredators
 };

@@ -2,7 +2,7 @@
 
 import { initScene, onWindowResize, scene, camera, renderer } from './submodule/sceneSetup.js';
 import { CONFIG } from './config.js';
-import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, getActivePredatorPositions } from './submodule/birdSystem.js';
+import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, getActivePredatorPositions, updatePerformanceHUD } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
 import { initComputeRenderer, gpu_allocation, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
 import { initRecording, createRecordingButton, onRecordingKeyDown, isRecordingActive } from './submodule/recording.js';
@@ -25,6 +25,7 @@ const initialResolution = Math.ceil(Math.sqrt(initialBoidsCount));
 let last = performance.now();
 const bounds = CONFIG.simulation.bounds;
 let frameCount = 0;
+let smoothedDelta = 1 / 60;
 
 init();
 animate();
@@ -58,6 +59,10 @@ function render() {
     let delta = (now - last) / 1000;
     if (delta > CONFIG.simulation.maxDeltaSeconds) delta = CONFIG.simulation.maxDeltaSeconds;  // Limitar delta para evitar saltos bruscos
     last = now;
+    smoothedDelta = smoothedDelta * 0.9 + delta * 0.1;
+    const fps = 1 / Math.max(smoothedDelta, 1e-6);
+    const frameMs = delta * 1000;
+    updatePerformanceHUD(fps, frameMs);
 
     // Actualizar uniformes de tiempo en shaders de posición y velocidad de boids
     uniform_position.clock.value = now;
