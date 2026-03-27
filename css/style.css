@@ -1,85 +1,85 @@
-html, body {
-			background-color: transparent;
-			width: 100%;
-			height: 100%;
-			margin: 0;
-			overflow: hidden;
-			cursor: pointer;
-		}
+html,
+body {
+    background-color: transparent;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    cursor: pointer;
+}
 
-		canvas {
-			display: block;
-		}
+canvas {
+    display: block;
+}
 
-		#info {
-			margin-top: -6%;
-		}
+#info {
+    margin-top: -6%;
+}
 
-		#hud {
-			position: fixed;
-			top: 30px;
-			left: 0;
-			width: 280px;
-			height: auto;
-			padding: 20px;
-			background-color: rgba(0, 0, 0, 0.7);
-			color: white;
-			font-family: Arial, sans-serif;
-			font-size: 14px;
-			border-right: 1px solid #444;
-			z-index: 1000;
-			transform: translateX(0);
-			opacity: 1;
-			transition: transform 0.3s ease, opacity 0.3s ease;
-			overflow-y: auto;
-		  }
-		  
-		  #hud.hidden {
-			transform: translateX(-100%);
-			opacity: 0;
-			pointer-events: none;
-		  }
-		  
-		  #hudToggle {
-			position: fixed;
-			top: 10px;
-			left: 10px;
-			width: 30px;
-			height: 30px;
-			line-height: 30px;
-			text-align: center;
-			background-color: #222;
-			color: white;
-			border-radius: 5px;
-			cursor: pointer;
-			z-index: 1001;
-			box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-			font-size: 20px;
-		  }
+#hud {
+    position: fixed;
+    top: 30px;
+    left: 0;
+    width: 280px;
+    height: auto;
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    border-right: 1px solid #444;
+    z-index: 1000;
+    transform: translateX(0);
+    opacity: 1;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    overflow-y: auto;
+}
 
-		#recordingContainer {
-			position: fixed;
-			top: 10px;
-			right: 10px;
-			z-index: 10000;
-			text-align: right;
-			background: white;
-			color: black;
-			border: 1px solid black;
-		}
+#hud.hidden {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
 
-		#startStopRecording {
-			padding: 10px 20px;
-			font-size: 16px;
-			border: none;
-			border-radius: 5px;
-			cursor: pointer;
-			margin-bottom: 5px;
-		}
+#hudToggle {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    background-color: #222;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1001;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    font-size: 20px;
+}
 
-		#recordingInfo {
-			color: black;
-			font-size: 14px;
-			margin-top: 4px;
-		}
-		  
+#recordingContainer {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 10000;
+    text-align: right;
+    background: white;
+    color: black;
+    border: 1px solid black;
+}
+
+#startStopRecording {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+
+#recordingInfo {
+    color: black;
+    font-size: 14px;
+    margin-top: 4px;
+}
