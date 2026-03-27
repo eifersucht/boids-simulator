@@ -140,18 +140,6 @@ function initBirds(scene, renderer) {
 
     const hud = document.createElement('div');
     hud.id = 'hud';
-    hud.style.position = 'fixed';
-    hud.style.top = '40px';
-    hud.style.left = '10px';
-    hud.style.padding = '10px';
-    hud.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    hud.style.color = 'white';
-    hud.style.fontFamily = 'Arial, sans-serif';
-    hud.style.fontSize = '14px';
-    hud.style.borderRadius = '8px';
-    hud.style.zIndex = '1000';
-    hud.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    hud.style.pointerEvents = 'auto';  // importante para permitir interacción
 
     hud.innerHTML = `
     <div>Controles:</div>
@@ -302,20 +290,6 @@ function initBirds(scene, renderer) {
     const toggleButton = document.createElement('div');
     toggleButton.id = 'hudToggle';
     toggleButton.innerHTML = '&#9776;'; // icono de "hamburguesa"
-    toggleButton.style.position = 'fixed';
-    toggleButton.style.top = '10px';
-    toggleButton.style.left = '10px';
-    toggleButton.style.width = '30px';
-    toggleButton.style.height = '30px';
-    toggleButton.style.lineHeight = '30px';
-    toggleButton.style.textAlign = 'center';
-    toggleButton.style.backgroundColor = '#222';
-    toggleButton.style.color = 'white';
-    toggleButton.style.borderRadius = '5px';
-    toggleButton.style.cursor = 'pointer';
-    toggleButton.style.zIndex = '1001';
-    toggleButton.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-    toggleButton.style.fontSize = '20px';
     toggleButton.title = 'Mostrar/Ocultar controles';
     document.body.appendChild(toggleButton);
 
