@@ -2,7 +2,7 @@
 
 import { initScene, onWindowResize, scene, camera, renderer } from './submodule/sceneSetup.js';
 import { CONFIG } from './config.js';
-import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, leaderVelocity, leaderAcceleration, getActivePredatorPositions } from './submodule/birdSystem.js';
+import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, getActivePredatorPositions } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
 import { initComputeRenderer, gpu_allocation, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
 import { initRecording, createRecordingButton, onRecordingKeyDown } from './submodule/recording.js';
@@ -75,9 +75,7 @@ function render() {
         uniformVelocity: uniform_velocity,
         activePredators: getActivePredatorPositions(),
         bounds,
-        leaderPosition,
-        leaderVelocity,
-        leaderAcceleration
+        leaderPosition
     });
 
     // Ejecutar la computación GPU para obtener nuevas posiciones y velocidades de boids

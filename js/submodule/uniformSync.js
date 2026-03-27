@@ -5,9 +5,7 @@ function syncBoidUniforms(params) {
         uniformVelocity,
         activePredators,
         bounds,
-        leaderPosition,
-        leaderVelocity,
-        leaderAcceleration
+        leaderPosition
     } = params;
 
     const maxPredators = CONFIG.predator.maxCount;
@@ -32,18 +30,6 @@ function syncBoidUniforms(params) {
     }
 
     uniformVelocity.leader.value.copy(leaderPosition);
-    uniformVelocity.leaderVelocity.value.copy(leaderVelocity);
-    uniformVelocity.leaderAcceleration.value.copy(leaderAcceleration);
-
-    let brakingForce = 0.0;
-    const leaderSpeed = leaderVelocity.length();
-    if (leaderSpeed > 0) {
-        const accelAlongVelocity = leaderAcceleration.dot(leaderVelocity) / leaderSpeed;
-        brakingForce = Math.max(0.0, -accelAlongVelocity);
-    }
-    const turningForce = Math.max(0.0, leaderAcceleration.length());
-    uniformVelocity.leaderBrakingForce.value = brakingForce;
-    uniformVelocity.leaderTurningForce.value = turningForce;
 }
 
 export { syncBoidUniforms };

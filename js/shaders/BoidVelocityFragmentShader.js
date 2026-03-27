@@ -7,22 +7,15 @@ const MAX_PREDATORS = Math.max(1, Math.floor(CONFIG.predator?.maxCount || 1));
 export const BoidVelocityFragmentShader = `
     #define MAX_PREDATORS ${MAX_PREDATORS}
     uniform float clock;
-    uniform float testing;
     uniform float del_change;
     uniform float seperation_distance;
     uniform float alignment_distance;
     uniform float cohesion_distance;
-    uniform float freedom_distance;
     uniform vec3 predators[MAX_PREDATORS];
     uniform int predatorCount;
     uniform vec3 globalDrift;
     uniform vec3 leader;
-    uniform vec3 leaderVelocity;
-    uniform vec3 leaderAcceleration;
-    uniform float leaderBrakingForce;
-    uniform float leaderTurningForce;
     uniform vec3 windField;
-    uniform float groupInertia;
     uniform float vortexStrength;
     uniform float boidSpeed;
     uniform float predatorRange;
@@ -41,16 +34,9 @@ export const BoidVelocityFragmentShader = `
 
     const float width = resolution.x;
     const float height = resolution.y;
-    const float PI = 3.14159;
-    const float PI_2 = PI * 2.0;
-
     float zoneRadius;
     float zoneRadiusSquared;
     float separationThresh;
-    float alignmentThresh;
-
-    const float UPPER_bounds = bounds;
-    const float LOWER_bounds = -UPPER_bounds;
     vec3 safeNormalize(vec3 v) {
         float lenSq = dot(v, v);
         if (lenSq < 1e-8) return vec3(0.0);
@@ -59,7 +45,6 @@ export const BoidVelocityFragmentShader = `
     void main() {
         zoneRadius = seperation_distance + alignment_distance + cohesion_distance;
         separationThresh = seperation_distance / zoneRadius;
-        alignmentThresh = (seperation_distance + alignment_distance) / zoneRadius;
         zoneRadiusSquared = zoneRadius * zoneRadius;
 
         vec2 uv = gl_FragCoord.xy / resolution.xy;

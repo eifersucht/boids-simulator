@@ -35,23 +35,16 @@ function initComputeRenderer(renderer, resolution, bounds) {
 
     uniform_velocity.clock = { value: 0.0 };
     uniform_velocity.del_change = { value: 0.0 };
-    uniform_velocity.testing = { value: 1.0 };
     uniform_velocity.seperation_distance = { value: CONFIG.boids.separationDistance };
     uniform_velocity.alignment_distance = { value: CONFIG.boids.alignmentDistance };
     uniform_velocity.cohesion_distance = { value: CONFIG.boids.cohesionDistance };
-    uniform_velocity.freedom_distance = { value: CONFIG.boids.freedomDistance };
     uniform_velocity.predators = { value: [] };
     uniform_velocity.predatorCount = { value: 0 };
     uniform_velocity.globalDrift = { value: new THREE.Vector3() };
     uniform_velocity.leader = { value: new THREE.Vector3() };
 
     // Nuevos uniforms para realismo dinámico
-    uniform_velocity.leaderVelocity = { value: new THREE.Vector3() };
-    uniform_velocity.leaderAcceleration = { value: new THREE.Vector3() };
-    uniform_velocity.leaderBrakingForce = { value: 0.0 };
-    uniform_velocity.leaderTurningForce = { value: 0.0 };
     uniform_velocity.windField = { value: new THREE.Vector3() };
-    uniform_velocity.groupInertia = { value: CONFIG.boids.groupInertia };
 
     uniform_velocity.vortexStrength = { value: 0.0 };
     uniform_velocity.boidSpeed = { value: CONFIG.boids.speedDefault };
