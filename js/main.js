@@ -4,7 +4,9 @@ import { initScene, onWindowResize, scene, camera, renderer } from './submodule/
 import { CONFIG } from './config.js';
 import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, leaderVelocity, leaderAcceleration, getActivePredatorPositions } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
-import { initComputeRenderer, gpu_allocation, velocity_variable, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
+import { initComputeRenderer, gpu_allocation, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
+import { initRecording, createRecordingButton, onRecordingKeyDown } from './submodule/recording.js';
+import { syncBoidUniforms } from './submodule/uniformSync.js';
 
 if (!Detector.webgl) Detector.addGetWebGLMessage();
 
@@ -31,6 +33,7 @@ function init() {
     initScene();
     // Inicializar el sistema de computación GPU para la simulación de boids
     initComputeRenderer(renderer, initialResolution, bounds);
+    initRecording(renderer, CONFIG.recording.fps);
 
     uniform_velocity.boidSpeed.value = CONFIG.boids.speedDefault;
     // Inicializar boids, líder y depredador en la escena, pasándole el renderer para gestión dinámica
@@ -68,38 +71,14 @@ function render() {
     updatePredators(delta);
 
     // Actualizar uniformes de posición del depredador y estado del líder para los shaders de boids
-    const activePredators = getActivePredatorPositions();
-    const maxPredators = CONFIG.predator.maxCount;
-    if (!uniform_velocity.predators.value || uniform_velocity.predators.value.length !== maxPredators) {
-        uniform_velocity.predators.value = [];
-        for (let i = 0; i < maxPredators; i++) {
-            uniform_velocity.predators.value.push(new THREE.Vector3(9999, 9999, 9999));
-        }
-    }
-    const predatorCount = Math.min(activePredators.length, maxPredators);
-    uniform_velocity.predatorCount.value = predatorCount;
-    for (let i = 0; i < maxPredators; i++) {
-        const target = uniform_velocity.predators.value[i];
-        if (i < predatorCount) {
-            target.copy(activePredators[i]).divideScalar(bounds);
-        } else {
-            target.set(9999, 9999, 9999);
-        }
-    }
-    uniform_velocity.leader.value.copy(leaderPosition);
-    uniform_velocity.leaderVelocity.value.copy(leaderVelocity);
-    uniform_velocity.leaderAcceleration.value.copy(leaderAcceleration);
-
-    // Calcular fuerzas de frenado y giro del líder para pasarlas a los shaders
-    let brakingForce = 0.0;
-    const leaderSpeed = leaderVelocity.length();
-    if (leaderSpeed > 0) {
-        const accelAlongVelocity = leaderAcceleration.dot(leaderVelocity) / leaderSpeed;
-        brakingForce = Math.max(0.0, -accelAlongVelocity);
-    }
-    const turningForce = Math.max(0.0, leaderAcceleration.length());
-    uniform_velocity.leaderBrakingForce.value = brakingForce;
-    uniform_velocity.leaderTurningForce.value = turningForce;
+    syncBoidUniforms({
+        uniformVelocity: uniform_velocity,
+        activePredators: getActivePredatorPositions(),
+        bounds,
+        leaderPosition,
+        leaderVelocity,
+        leaderAcceleration
+    });
 
     // Ejecutar la computación GPU para obtener nuevas posiciones y velocidades de boids
     gpu_allocation.compute();
@@ -128,118 +107,6 @@ function render() {
     renderer.render(scene, camera);
 }
 
-// -------------------- Grabación de Vídeo --------------------
-
-let mediaRecorder = null;
-let recordedChunks = [];
-let recordingStartTime = 0;
-let recordingTimerInterval = null;
-
-function startRecording() {
-    if (mediaRecorder && mediaRecorder.state === 'recording') return;
-    recordedChunks = [];
-    if (!window.MediaRecorder) {
-        alert('MediaRecorder no esta disponible en este navegador.');
-        return;
-    }
-    // Capturar la salida del canvas como stream de vídeo a 60 FPS
-    const stream = renderer.domElement.captureStream(CONFIG.recording.fps);
-    const options = {};
-    if (MediaRecorder.isTypeSupported) {
-        if (MediaRecorder.isTypeSupported('video/webm; codecs=vp8')) {
-            options.mimeType = 'video/webm; codecs=vp8';
-        } else if (MediaRecorder.isTypeSupported('video/webm')) {
-            options.mimeType = 'video/webm';
-        }
-    }
-    try {
-        mediaRecorder = new MediaRecorder(stream, options);
-    } catch (error) {
-        console.error('No se pudo iniciar MediaRecorder:', error);
-        alert('No se pudo iniciar la grabacion en este navegador.');
-        return;
-    }
-    mediaRecorder.ondataavailable = function(event) {
-        if (event.data.size > 0) {
-            recordedChunks.push(event.data);
-        }
-    };
-    mediaRecorder.onstop = function() {
-        // Al detener, descargar el vídeo grabado
-        clearInterval(recordingTimerInterval);
-        updateRecordingUI(false);
-        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'bandada-alpha.webm';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }, 100);
-    };
-    mediaRecorder.start();
-    recordingStartTime = Date.now();
-    recordingTimerInterval = setInterval(updateRecordingTime, 1000);
-    updateRecordingUI(true);
-    console.log('Grabacion iniciada');
-}
-
-function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        console.log('Grabacion detenida');
-    }
-}
-
-function createRecordingButton() {
-    const container = document.createElement('div');
-    container.id = 'recordingContainer';
-
-    const button = document.createElement('button');
-    button.id = 'startStopRecording';
-    button.innerText = 'Grabar';
-
-    button.onclick = () => {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            stopRecording();
-        } else {
-            startRecording();
-        }
-    };
-
-    const recordingInfo = document.createElement('div');
-    recordingInfo.id = 'recordingInfo';
-
-    container.appendChild(button);
-    container.appendChild(recordingInfo);
-    document.body.appendChild(container);
-}
-
-function updateRecordingUI(isRecording) {
-    const button = document.getElementById('startStopRecording');
-    const info = document.getElementById('recordingInfo');
-    if (isRecording) {
-        button.innerHTML = 'Grabando...';
-        info.innerText = 'Duracion: 00:00';
-    } else {
-        button.innerHTML = 'Grabar';
-        info.innerText = '';
-    }
-}
-
-function updateRecordingTime() {
-    const info = document.getElementById('recordingInfo');
-    if (!info) return;
-    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
-    const seconds = (elapsed % 60).toString().padStart(2, '0');
-    info.innerText = `Duracion: ${minutes}:${seconds}`;
-}
-
 function onKeyDown(event) {
     const target = event.target;
     if (
@@ -251,10 +118,5 @@ function onKeyDown(event) {
     ) {
         return;
     }
-    // Tecla 'v' para iniciar grabación, 's' para detener
-    if (event.key === 'v' || event.key === 'V') {
-        startRecording();
-    } else if (event.key === 's' || event.key === 'S') {
-        stopRecording();
-    }
+    onRecordingKeyDown(event);
 }
