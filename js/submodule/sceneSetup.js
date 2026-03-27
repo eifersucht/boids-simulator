@@ -41,8 +41,4 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
 }
 
-function render() {
-    renderer.render(scene, camera);
-}
-
 export { initScene, onWindowResize, scene, camera, renderer };

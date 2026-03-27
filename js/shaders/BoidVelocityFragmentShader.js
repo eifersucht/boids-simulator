@@ -1,6 +1,7 @@
 // js/shaders/BoidVelocityFragmentShader.js
 
 export const BoidVelocityFragmentShader = `
+    #define MAX_PREDATORS 4
     uniform float clock;
     uniform float testing;
     uniform float del_change;
@@ -8,7 +9,8 @@ export const BoidVelocityFragmentShader = `
     uniform float alignment_distance;
     uniform float cohesion_distance;
     uniform float freedom_distance;
-    uniform vec3 predator;
+    uniform vec3 predators[MAX_PREDATORS];
+    uniform int predatorCount;
     uniform vec3 globalDrift;
     uniform vec3 leader;
     uniform vec3 leaderVelocity;
@@ -58,12 +60,17 @@ export const BoidVelocityFragmentShader = `
         vec3 velocity = birdVelocity;
         float limit = speedLimit;
 
-        vec3 predatorDir = birdPosition - predator;
-        float predatorDist = length(predatorDir);
-        if (predatorDist < predatorRange) {
-            float strength = (1.0 - (predatorDist / predatorRange)) * del_change * predatorStrength;
-            velocity += normalize(predatorDir) * strength;
-            limit += predatorSpeedLimitBoost;
+        for (int i = 0; i < MAX_PREDATORS; i++) {
+            if (i >= predatorCount) {
+                break;
+            }
+            vec3 predatorDir = birdPosition - predators[i];
+            float predatorDist = length(predatorDir);
+            if (predatorDist < predatorRange) {
+                float strength = (1.0 - (predatorDist / predatorRange)) * del_change * predatorStrength;
+                velocity += normalize(predatorDir) * strength;
+                limit += predatorSpeedLimitBoost;
+            }
         }
 
         vec3 toCenter = birdPosition * centerPullStrength;

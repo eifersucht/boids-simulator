@@ -38,23 +38,45 @@ export const CONFIG = {
         targetScale: { x: 2.0, y: 1.0, z: 2.0 } // Increase axes => wider target spread.
     },
 
-    // Predator behavior and influence.
+    // Predator influence shared by all predators (shader only).
     predator: {
-        aggressionDefault: 2.0, // Increase => faster predator.
-        startPosition: { x: 200, y: 0, z: 0 }, // Initial predator position.
-        randomVelocityScale: 50, // Increase => more initial randomness.
-        noiseScale: { x: 0.2, y: 0.1, z: 0.2 }, // Increase => noisier pursuit.
-        baseSpeed: 100, // Increase => faster predator baseline speed.
-        distanceSpeedFactor: 0.5, // Increase => accelerates more when far from center.
-        distanceSpeedClamp: 300, // Increase => allows higher distance-based speed.
-        changeIntervalMin: 2.0, // Increase => change direction less often.
-        changeIntervalJitter: 2.0, // Increase => more randomness in change timing.
-
-        // Shader influence radius and force.
-        influenceRange: 120.0, // Increase => predator affects boids from farther away.
+        influenceRange: 120.0, // Increase => predators affect boids from farther away.
         influenceStrength: 180.0, // Increase => stronger avoidance force.
-        speedLimitBoost: 10.0 // Increase => higher max speed when escaping.
+        speedLimitBoost: 10.0, // Increase => higher max speed when escaping.
+        maxCount: 4 // Increase => more predators sent to shader (also update MAX_PREDATORS).
     },
+
+    // Predator instances (each one can be enabled from HUD).
+    predators: [
+        {
+            name: 'Depredador 1',
+            enabled: true,
+            visible: false,
+            aggression: 2.0, // Increase => faster predator.
+            startPosition: { x: 200, y: 0, z: 0 },
+            randomVelocityScale: 50, // Increase => more initial randomness.
+            noiseScale: { x: 0.2, y: 0.1, z: 0.2 }, // Increase => noisier pursuit.
+            baseSpeed: 100, // Increase => faster predator baseline speed.
+            distanceSpeedFactor: 0.5, // Increase => accelerates more when far from center.
+            distanceSpeedClamp: 300, // Increase => allows higher distance-based speed.
+            changeIntervalMin: 2.0, // Increase => change direction less often.
+            changeIntervalJitter: 2.0 // Increase => more randomness in change timing.
+        },
+        {
+            name: 'Depredador 2',
+            enabled: false,
+            visible: false,
+            aggression: 2.0,
+            startPosition: { x: -200, y: 0, z: 0 },
+            randomVelocityScale: 50,
+            noiseScale: { x: 0.2, y: 0.1, z: 0.2 },
+            baseSpeed: 100,
+            distanceSpeedFactor: 0.5,
+            distanceSpeedClamp: 300,
+            changeIntervalMin: 2.0,
+            changeIntervalJitter: 2.0
+        }
+    ],
 
     // Shader tuning (kept here to keep behavior reproducible).
     shader: {

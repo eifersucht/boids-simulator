@@ -2,27 +2,17 @@
 
 import { initScene, onWindowResize, scene, camera, renderer } from './submodule/sceneSetup.js';
 import { CONFIG } from './config.js';
-import { initBirds, birdMeshes, leaderMesh, predatorMesh, updateLeader, updatePredator, leaderPosition, leaderVelocity, leaderAcceleration, predatorPosition, predatorVelocity } from './submodule/birdSystem.js';
+import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, leaderVelocity, leaderAcceleration, getActivePredatorPositions } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
 import { initComputeRenderer, gpu_allocation, velocity_variable, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
 
 if (!Detector.webgl) Detector.addGetWebGLMessage();
 
-// Determinar la cantidad inicial de boids (desde hash de URL o input de interfaz si existe)
-let initialBoidsCount;
-const countInputElement = document.getElementById('boidCount');
-if (countInputElement) {
-    // Si hay un input para la cantidad de boids, usar su valor inicial
-    const parsedCount = parseInt(countInputElement.value, 10);
-    const fallbackCount = CONFIG.defaultGridSize * CONFIG.defaultGridSize;
-    initialBoidsCount = Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : fallbackCount;
-} else {
-    // Si no, usar el valor en la URL (hash) o el predeterminado 64*64
-    const hash = document.location.hash.substr(1);
-    const hashValue = hash ? parseInt(hash, 10) : CONFIG.defaultGridSize;
-    const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : CONFIG.defaultGridSize;
-    initialBoidsCount = normalizedHash * normalizedHash;
-}
+// Determinar la cantidad inicial de boids desde el hash de URL o el valor por defecto.
+const hash = document.location.hash.substr(1);
+const hashValue = hash ? parseInt(hash, 10) : CONFIG.defaultGridSize;
+const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : CONFIG.defaultGridSize;
+const initialBoidsCount = normalizedHash * normalizedHash;
 // Mostrar la cantidad inicial en el elemento indicador de boids
 const birdsLabel = document.getElementById('birds');
 if (birdsLabel) birdsLabel.innerText = initialBoidsCount;
@@ -75,10 +65,27 @@ function render() {
 
     // Actualizar posición y estado del líder y depredador
     updateLeader(delta);
-    updatePredator(delta);
+    updatePredators(delta);
 
     // Actualizar uniformes de posición del depredador y estado del líder para los shaders de boids
-    uniform_velocity.predator.value.copy(predatorPosition).divideScalar(bounds);
+    const activePredators = getActivePredatorPositions();
+    const maxPredators = CONFIG.predator.maxCount;
+    if (!uniform_velocity.predators.value || uniform_velocity.predators.value.length !== maxPredators) {
+        uniform_velocity.predators.value = [];
+        for (let i = 0; i < maxPredators; i++) {
+            uniform_velocity.predators.value.push(new THREE.Vector3(9999, 9999, 9999));
+        }
+    }
+    const predatorCount = Math.min(activePredators.length, maxPredators);
+    uniform_velocity.predatorCount.value = predatorCount;
+    for (let i = 0; i < maxPredators; i++) {
+        const target = uniform_velocity.predators.value[i];
+        if (i < predatorCount) {
+            target.copy(activePredators[i]).divideScalar(bounds);
+        } else {
+            target.set(9999, 9999, 9999);
+        }
+    }
     uniform_velocity.leader.value.copy(leaderPosition);
     uniform_velocity.leaderVelocity.value.copy(leaderVelocity);
     uniform_velocity.leaderAcceleration.value.copy(leaderAcceleration);

@@ -40,7 +40,8 @@ function initComputeRenderer(renderer, resolution, bounds) {
     uniform_velocity.alignment_distance = { value: CONFIG.boids.alignmentDistance };
     uniform_velocity.cohesion_distance = { value: CONFIG.boids.cohesionDistance };
     uniform_velocity.freedom_distance = { value: CONFIG.boids.freedomDistance };
-    uniform_velocity.predator = { value: new THREE.Vector3() };
+    uniform_velocity.predators = { value: [] };
+    uniform_velocity.predatorCount = { value: 0 };
     uniform_velocity.globalDrift = { value: new THREE.Vector3() };
     uniform_velocity.leader = { value: new THREE.Vector3() };
 

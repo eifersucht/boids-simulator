@@ -1,33 +1,30 @@
 // js/submodule/birdSystem.js
 
 // Importar sistema de computación GPU y shaders necesarios
-import * as Compute from './GPUComputeSystem.js';
 import { CONFIG } from '../config.js';
-import { BoidPositionFragmentShader } from '../shaders/BoidPositionFragmentShader.js';
-import { BoidVelocityFragmentShader } from '../shaders/BoidVelocityFragmentShader.js';
+import { uniform_velocity } from './GPUComputeSystem.js';
 
 // Arrays y objetos globales para boids, líder y depredador
 let birdMeshes = [];
 let leaderMesh;
-let predatorMesh;
 
 // Vectores de posición/velocidad del líder y depredador
 let leaderPosition;
 let leaderVelocity;
 let leaderAcceleration;
 let leaderTargetDirection;
-let predatorPosition;
-let predatorVelocity;
+let predatorMeshes = [];
+let predatorPositions = [];
+let predatorVelocities = [];
+let predatorConfigs = [];
 
 // Temporizadores internos para cambios de dirección
 let leaderChangeTimer = 0;
-let predatorChangeTimer = 0;
+let predatorChangeTimers = [];
 
 // Parámetros de estado de la simulación
 let leaderSpeedMultiplier = 1.0;    // Multiplicador de velocidad del líder
 let leaderVisible = false;         // Visibilidad del líder (inicialmente oculto)
-let predatorVisible = false;       // Visibilidad del depredador (inicialmente oculto)
-let predatorSpeedMultiplier = CONFIG.predator.aggressionDefault; // Agresividad (multiplicador de velocidad) del depredador
 let boidSpeedMultiplier = CONFIG.boids.speedDefault;   // Velocidad general de los boids (multiplicador)
 
 // Límite de movimiento (caja de simulación)
@@ -40,7 +37,6 @@ let currentBoidSize = CONFIG.boids.sizeDefault;  // Tamaño actual (radio) de lo
 
 // Referencias al renderer y a la escena, para añadir/eliminar boids dinámicamente
 let rendererRef;
-let sceneRef;
 let hudElements = null;
 
 /**
@@ -50,22 +46,10 @@ let hudElements = null;
  */
 function initBirds(scene, renderer) {
     // Almacenar referencias de escena y renderer para uso posterior
-    sceneRef = scene;
     rendererRef = renderer;
 
-    // Determinar color inicial para los boids (leer de input de color si existe)
-    let initialColor = 0x111111; // Color por defecto negro
-    const colorInputElem = document.getElementById('boidColor');
-    if (colorInputElem) {
-        try {
-            // Si existe input de color, usar su valor inicial (#RRGGBB)
-            initialColor = new THREE.Color(colorInputElem.value);
-        } catch (e) {
-            initialColor = new THREE.Color(0x111111);
-        }
-    } else {
-        initialColor = new THREE.Color(0x111111);
-    }
+    // Determinar color inicial para los boids.
+    const initialColor = new THREE.Color(0x111111);
 
     // Crear geometría y material para boids (reutilizados por todas las aves)
     boidGeometry = new THREE.SphereGeometry(currentBoidSize, 8, 8);
@@ -90,7 +74,7 @@ function initBirds(scene, renderer) {
     leaderMesh.visible = false;
     leaderVisible = false;  // sincronizar estado del líder con su visibilidad
 
-    // Crear depredador (esfera naranja) y añadirlo a la escena
+    // Crear depredadores (esferas naranjas) y añadirlos a la escena
     const predatorGeometry = new THREE.SphereGeometry(8.0, 16, 16);
     const predatorMaterial = new THREE.MeshStandardMaterial({
         color: 0xff8800,
@@ -99,11 +83,50 @@ function initBirds(scene, renderer) {
         transparent: true,
         opacity: 1.0
     });
-    predatorMesh = new THREE.Mesh(predatorGeometry, predatorMaterial);
-    predatorMesh.matrixAutoUpdate = true;
-    scene.add(predatorMesh);
-    predatorMesh.visible = false;
-    predatorVisible = false;  // sincronizar estado del depredador con su visibilidad
+    const basePredatorConfig = {
+        name: 'Depredador',
+        enabled: true,
+        visible: false,
+        aggression: 2.0,
+        startPosition: { x: 200, y: 0, z: 0 },
+        randomVelocityScale: 50,
+        noiseScale: { x: 0.2, y: 0.1, z: 0.2 },
+        baseSpeed: 100,
+        distanceSpeedFactor: 0.5,
+        distanceSpeedClamp: 300,
+        changeIntervalMin: 2.0,
+        changeIntervalJitter: 2.0
+    };
+    const predatorList = CONFIG.predators && CONFIG.predators.length > 0
+        ? CONFIG.predators
+        : [basePredatorConfig];
+    predatorConfigs = predatorList.map((entry, index) => {
+        const cfg = {
+            ...basePredatorConfig,
+            ...entry,
+            name: entry.name || `Depredador ${index + 1}`,
+            startPosition: { ...basePredatorConfig.startPosition, ...(entry.startPosition || {}) },
+            noiseScale: { ...basePredatorConfig.noiseScale, ...(entry.noiseScale || {}) }
+        };
+        const mesh = new THREE.Mesh(predatorGeometry, predatorMaterial);
+        mesh.matrixAutoUpdate = true;
+        scene.add(mesh);
+        mesh.visible = cfg.visible && cfg.enabled;
+
+        predatorMeshes.push(mesh);
+        predatorPositions.push(
+            new THREE.Vector3(cfg.startPosition.x, cfg.startPosition.y, cfg.startPosition.z)
+        );
+        predatorVelocities.push(
+            new THREE.Vector3(
+                (Math.random() - 0.5) * cfg.randomVelocityScale,
+                (Math.random() - 0.5) * cfg.randomVelocityScale,
+                (Math.random() - 0.5) * cfg.randomVelocityScale
+            )
+        );
+        predatorChangeTimers.push(0);
+        return cfg;
+    });
 
     // Inicializar vectores de estado del líder y depredador
     leaderPosition = new THREE.Vector3();
@@ -115,16 +138,6 @@ function initBirds(scene, renderer) {
         (Math.random() - 0.5)
     ).normalize();
 
-    predatorPosition = new THREE.Vector3(
-        CONFIG.predator.startPosition.x,
-        CONFIG.predator.startPosition.y,
-        CONFIG.predator.startPosition.z
-    );
-    predatorVelocity = new THREE.Vector3(
-        (Math.random() - 0.5) * CONFIG.predator.randomVelocityScale,
-        (Math.random() - 0.5) * CONFIG.predator.randomVelocityScale,
-        (Math.random() - 0.5) * CONFIG.predator.randomVelocityScale
-    );
     const hud = document.createElement('div');
     hud.id = 'hud';
     hud.style.position = 'fixed';
@@ -166,13 +179,8 @@ function initBirds(scene, renderer) {
         <label>Velocidad general de boids:</label><br>
         <input type="number" id="boidSpeed" value="${CONFIG.boids.speedDefault}" min="0.1" max="10" step="0.1"><br><br>
 
-        <label>Agresividad del depredador:</label><br>
-        <input type="number" id="agresividad" value="${CONFIG.predator.aggressionDefault}" min="0" max="10" step="0.1"><br><br>
-
-        <label>
-            <input type="checkbox" id="predatorVisibleToggle">
-            Mostrar depredador
-        </label>
+        <div>Depredadores:</div>
+        <div id="predatorsPanel"></div>
     </div>
     `;
 
@@ -183,6 +191,53 @@ function initBirds(scene, renderer) {
         leaderInfo: document.getElementById('leaderInfo'),
         predatorInfo: document.getElementById('predatorInfo')
     };
+    const predatorsPanel = document.getElementById('predatorsPanel');
+    if (predatorsPanel) {
+        predatorsPanel.innerHTML = '';
+        predatorConfigs.forEach((cfg, index) => {
+            const row = document.createElement('div');
+            row.style.marginBottom = '6px';
+
+            const toggle = document.createElement('input');
+            toggle.type = 'checkbox';
+            toggle.checked = !!cfg.enabled;
+            toggle.id = `predatorToggle_${index}`;
+
+            const label = document.createElement('label');
+            label.htmlFor = toggle.id;
+            label.innerText = ` ${cfg.name}`;
+
+            const speed = document.createElement('input');
+            speed.type = 'number';
+            speed.min = '0';
+            speed.max = '10';
+            speed.step = '0.1';
+            speed.value = cfg.aggression.toFixed(1);
+            speed.style.width = '70px';
+            speed.style.marginLeft = '8px';
+
+            toggle.addEventListener('change', (e) => {
+                cfg.enabled = e.target.checked;
+                cfg.visible = e.target.checked;
+                const mesh = predatorMeshes[index];
+                if (mesh) mesh.visible = cfg.visible && cfg.enabled;
+                updateHUD();
+            });
+
+            speed.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!Number.isFinite(value) || value < 0) return;
+                cfg.aggression = value;
+                e.target.value = cfg.aggression.toFixed(1);
+                updateHUD();
+            });
+
+            row.appendChild(toggle);
+            row.appendChild(label);
+            row.appendChild(speed);
+            predatorsPanel.appendChild(row);
+        });
+    }
     updateHUD();
 
     // Eventos para los inputs nuevos
@@ -206,20 +261,6 @@ function initBirds(scene, renderer) {
         cambiarTamanoBoids(nuevoTamano);
     });
 
-    document.getElementById('agresividad').addEventListener('input', (e) => {
-        const nuevaAgresividad = parseFloat(e.target.value);
-        cambiarAgresividad(nuevaAgresividad);
-    });
-
-    const predatorToggle = document.getElementById('predatorVisibleToggle');
-    if (predatorToggle) {
-        predatorToggle.checked = predatorVisible;
-        predatorToggle.addEventListener('change', (e) => {
-            predatorVisible = e.target.checked;
-            predatorMesh.visible = predatorVisible;
-            updateHUD();
-        });
-    }
 
     document.getElementById('applyBoidCount').addEventListener('click', () => {
         const nuevoNumero = parseInt(document.getElementById('boidCount').value, 10);
@@ -257,13 +298,6 @@ function initBirds(scene, renderer) {
         }
     }
 
-    // Configurar eventos para inputs de la interfaz:
-    const colorInput = document.getElementById('boidColor');
-    if (colorInput) {
-        colorInput.addEventListener('input', () => {
-            cambiarColorBoids(colorInput.value);
-        });
-    }
     // Crear botón de toggle para mostrar/ocultar el HUD
     const toggleButton = document.createElement('div');
     toggleButton.id = 'hudToggle';
@@ -333,52 +367,64 @@ function updateLeader(delta) {
 }
 
 // Actualiza el movimiento del depredador (que persigue a la bandada)
-function updatePredator(delta) {
-    // Disminuir el temporizador de cambio de dirección del depredador
-    predatorChangeTimer -= delta;
-    if (predatorChangeTimer <= 0) {
-        // Calcular el centro de la bandada (promedio de posiciones de todos los boids)
-        if (birdMeshes.length === 0) {
-            return;
+function updatePredators(delta) {
+    if (predatorPositions.length === 0) return;
+    for (let i = 0; i < predatorConfigs.length; i++) {
+        const cfg = predatorConfigs[i];
+        if (!cfg.enabled) continue;
+
+        // Disminuir el temporizador de cambio de dirección del depredador
+        predatorChangeTimers[i] -= delta;
+        if (predatorChangeTimers[i] <= 0) {
+            // Calcular el centro de la bandada (promedio de posiciones de todos los boids)
+            if (birdMeshes.length === 0) {
+                continue;
+            }
+            let center = new THREE.Vector3();
+            for (let j = 0; j < birdMeshes.length; j++) {
+                center.add(birdMeshes[j].position);
+            }
+            center.divideScalar(birdMeshes.length);
+
+            // Direccion deseada hacia el centro de la bandada, con ruido aleatorio
+            const desiredDirection = center.clone().sub(predatorPositions[i]).normalize();
+            const noise = new THREE.Vector3(
+                (Math.random() - 0.5) * cfg.noiseScale.x,
+                (Math.random() - 0.5) * cfg.noiseScale.y,
+                (Math.random() - 0.5) * cfg.noiseScale.z
+            );
+            const finalDirection = desiredDirection.clone().add(noise).normalize();
+
+            // Calcular velocidad base en función de la distancia al centro de la bandada
+            const distanceToCenter = predatorPositions[i].distanceTo(center);
+            const baseSpeed =
+                cfg.baseSpeed +
+                Math.min(distanceToCenter, cfg.distanceSpeedClamp) * cfg.distanceSpeedFactor;
+            // Asignar velocidad al depredador aplicando el multiplicador de agresividad
+            predatorVelocities[i].copy(finalDirection).multiplyScalar(baseSpeed * cfg.aggression);
+
+            // Reiniciar temporizador de cambio de dirección
+            predatorChangeTimers[i] = cfg.changeIntervalMin + Math.random() * cfg.changeIntervalJitter;
         }
-        let center = new THREE.Vector3();
-        for (let i = 0; i < birdMeshes.length; i++) {
-            center.add(birdMeshes[i].position);
+
+        // Actualizar posición del depredador según su velocidad
+        predatorPositions[i].addScaledVector(predatorVelocities[i], delta);
+
+        // Rebotar en los límites invirtiendo la velocidad del depredador si sale del área
+        if (predatorPositions[i].x > bounds || predatorPositions[i].x < -bounds) {
+            predatorVelocities[i].x *= -1;
         }
-        center.divideScalar(birdMeshes.length);
+        if (predatorPositions[i].y > bounds || predatorPositions[i].y < -bounds) {
+            predatorVelocities[i].y *= -1;
+        }
+        if (predatorPositions[i].z > bounds || predatorPositions[i].z < -bounds) {
+            predatorVelocities[i].z *= -1;
+        }
 
-        // Direccion deseada hacia el centro de la bandada, con ruido aleatorio
-        const desiredDirection = center.clone().sub(predatorPosition).normalize();
-        const noise = new THREE.Vector3(
-            (Math.random() - 0.5) * CONFIG.predator.noiseScale.x,
-            (Math.random() - 0.5) * CONFIG.predator.noiseScale.y,
-            (Math.random() - 0.5) * CONFIG.predator.noiseScale.z
-        );
-        const finalDirection = desiredDirection.clone().add(noise).normalize();
-
-        // Calcular velocidad base en función de la distancia al centro de la bandada
-        const distanceToCenter = predatorPosition.distanceTo(center);
-        const baseSpeed =
-            CONFIG.predator.baseSpeed +
-            Math.min(distanceToCenter, CONFIG.predator.distanceSpeedClamp) *
-                CONFIG.predator.distanceSpeedFactor;
-        // Asignar velocidad al depredador aplicando el multiplicador de agresividad
-        predatorVelocity.copy(finalDirection).multiplyScalar(baseSpeed * predatorSpeedMultiplier);
-
-        // Reiniciar temporizador de cambio de dirección entre 2 y 4 segundos
-        predatorChangeTimer = CONFIG.predator.changeIntervalMin + Math.random() * CONFIG.predator.changeIntervalJitter;
+        // Actualizar la posición de la malla del depredador
+        predatorMeshes[i].position.copy(predatorPositions[i]);
+        predatorMeshes[i].visible = cfg.visible && cfg.enabled;
     }
-
-    // Actualizar posición del depredador según su velocidad
-    predatorPosition.addScaledVector(predatorVelocity, delta);
-
-    // Rebotar en los límites invirtiendo la velocidad del depredador si sale del área
-    if (predatorPosition.x > bounds || predatorPosition.x < -bounds) predatorVelocity.x *= -1;
-    if (predatorPosition.y > bounds || predatorPosition.y < -bounds) predatorVelocity.y *= -1;
-    if (predatorPosition.z > bounds || predatorPosition.z < -bounds) predatorVelocity.z *= -1;
-
-    // Actualizar la posición de la malla del depredador
-    predatorMesh.position.copy(predatorPosition);
 }
 
 // Actualiza la información mostrada en el HUD (velocidad del líder y visibilidad de líder/depredador)
@@ -394,7 +440,8 @@ function updateHUD() {
         hudElements.leaderInfo.innerText = `Lider: ${leaderVisible ? 'Visible' : 'Oculto'}`;
     }
     if (hudElements.predatorInfo) {
-        hudElements.predatorInfo.innerText = `Depredador: ${predatorVisible ? 'Visible' : 'Oculto'}`;
+        const enabledCount = predatorConfigs.filter((cfg) => cfg.enabled).length;
+        hudElements.predatorInfo.innerText = `Depredadores activos: ${enabledCount}`;
     }
 }
 
@@ -411,11 +458,6 @@ function ajustarCantidadBoids(nuevoNumero) {
     window.location.reload(); // recarga la página
 }
 
-// Cambia el color de todos los boids al seleccionado por el usuario
-function cambiarColorBoids(colorHex) {
-    boidMaterial.color.set(colorHex);
-}
-
 // Cambia el tamaño (escala) de los boids en la escena según el valor proporcionado
 function cambiarTamanoBoids(nuevoTamano) {
     if (nuevoTamano <= 0) return;
@@ -427,143 +469,25 @@ function cambiarTamanoBoids(nuevoTamano) {
     }
 }
 
-// Ajusta la agresividad del depredador (afecta su velocidad)
-function cambiarAgresividad(nuevaAgresividad) {
-    if (nuevaAgresividad < 0) return;
-    predatorSpeedMultiplier = nuevaAgresividad;
-}
-
 // Cambia la velocidad de los boids en la simulación (multiplicador de velocidad)
 function cambiarVelocidadBoids(nuevaVelocidad) {
     boidSpeedMultiplier = nuevaVelocidad;
-    if (Compute.uniform_velocity && Compute.uniform_velocity.boidSpeed) {
-        Compute.uniform_velocity.boidSpeed.value = boidSpeedMultiplier;
+    if (uniform_velocity && uniform_velocity.boidSpeed) {
+        uniform_velocity.boidSpeed.value = boidSpeedMultiplier;
     }
     const input = document.getElementById('boidSpeed');
     if (input) input.value = boidSpeedMultiplier.toFixed(1);
     updateHUD(); // <- Para que se refleje en el HUD al cambiar
 }
 
-// Re-inicializa el sistema de computación GPU (GPUComputeRenderer) para acomodar un nuevo número de boids
-function reinitComputeSystem(nuevoNumero) {
-    const oldRes = Compute.currentResolution;
-    const oldCount = birdMeshes.length;
-    // Leer las texturas actuales de posición y velocidad desde la GPU
-    const posArray = new Float32Array(oldRes * oldRes * 4);
-    const velArray = new Float32Array(oldRes * oldRes * 4);
-    rendererRef.readRenderTargetPixels(
-        Compute.gpu_allocation.getCurrentRenderTarget(Compute.position_variable),
-        0, 0, oldRes, oldRes,
-        posArray
-    );
-    rendererRef.readRenderTargetPixels(
-        Compute.gpu_allocation.getCurrentRenderTarget(Compute.velocity_variable),
-        0, 0, oldRes, oldRes,
-        velArray
-    );
-    // Calcular nueva resolución cuadrada necesaria
-    const newRes = Math.ceil(Math.sqrt(nuevoNumero));
-    // Crear nuevo renderer de computación GPU con la nueva resolución
-    const newCompute = new GPUComputationRenderer(newRes, newRes, rendererRef);
-    // Crear texturas de estado inicial (posición y velocidad)
-    const dtPosition = newCompute.createTexture();
-    const dtVelocity = newCompute.createTexture();
-    const posData = dtPosition.image.data;
-    const velData = dtVelocity.image.data;
-    // Rellenar texturas iniciales: conservar boids existentes y generar datos para boids nuevos o fantasmas
-    for (let i = 0; i < posData.length; i += 4) {
-        const index = i / 4;
-        if (index < nuevoNumero) {
-            if (index < oldCount) {
-                // Conservar posición y velocidad de boid existente
-                posData[i]     = posArray[i];
-                posData[i + 1] = posArray[i + 1];
-                posData[i + 2] = posArray[i + 2];
-                posData[i + 3] = 1;
-                velData[i]     = velArray[i];
-                velData[i + 1] = velArray[i + 1];
-                velData[i + 2] = velArray[i + 2];
-                velData[i + 3] = 1;
-            } else {
-                // Inicializar boid nuevo con posición y velocidad aleatorias
-                posData[i]     = (Math.random() - 0.5) * 80;
-                posData[i + 1] = (Math.random() - 0.5) * 10;
-                posData[i + 2] = (Math.random() - 0.5) * 80;
-                posData[i + 3] = 1;
-                velData[i]     = (Math.random() - 0.5) * 10;
-                velData[i + 1] = (Math.random() - 0.5) * 10;
-                velData[i + 2] = (Math.random() - 0.5) * 10;
-                velData[i + 3] = 1;
-            }
-        } else {
-            // Colocar boids "fantasma" (sin uso) lejos y sin velocidad para que no influyan
-            posData[i]     = 9999;
-            posData[i + 1] = 9999;
-            posData[i + 2] = 9999;
-            posData[i + 3] = 1;
-            velData[i]     = 0;
-            velData[i + 1] = 0;
-            velData[i + 2] = 0;
-            velData[i + 3] = 1;
+function getActivePredatorPositions() {
+    const active = [];
+    for (let i = 0; i < predatorConfigs.length; i++) {
+        if (predatorConfigs[i].enabled) {
+            active.push(predatorPositions[i]);
         }
     }
-    // Configurar variables de simulación con los shaders de posición y velocidad
-    const velVar = newCompute.addVariable("VelocityTexture", BoidVelocityFragmentShader, dtVelocity);
-    const posVar = newCompute.addVariable("PositionTexture", BoidPositionFragmentShader, dtPosition);
-    newCompute.setVariableDependencies(velVar, [posVar, velVar]);
-    newCompute.setVariableDependencies(posVar, [posVar, velVar]);
-    // Definir uniforms necesarios para las nuevas variables
-    posVar.material.uniforms.clock = { value: 0.0 };
-    posVar.material.uniforms.del_change = { value: 0.0 };
-    velVar.material.uniforms.clock = { value: 0.0 };
-    velVar.material.uniforms.del_change = { value: 0.0 };
-    velVar.material.uniforms.testing = { value: 1.0 };
-    velVar.material.uniforms.seperation_distance = { value: CONFIG.boids.separationDistance };
-    velVar.material.uniforms.alignment_distance = { value: CONFIG.boids.alignmentDistance };
-    velVar.material.uniforms.cohesion_distance = { value: CONFIG.boids.cohesionDistance };
-    velVar.material.uniforms.freedom_distance = { value: CONFIG.boids.freedomDistance };
-    velVar.material.uniforms.predator = { value: new THREE.Vector3() };
-    velVar.material.uniforms.globalDrift = { value: new THREE.Vector3() };
-    velVar.material.uniforms.leader = { value: new THREE.Vector3() };
-    velVar.material.uniforms.leaderVelocity = { value: new THREE.Vector3() };
-    velVar.material.uniforms.leaderAcceleration = { value: new THREE.Vector3() };
-    velVar.material.uniforms.leaderBrakingForce = { value: 0.0 };
-    velVar.material.uniforms.leaderTurningForce = { value: 0.0 };
-    velVar.material.uniforms.windField = { value: new THREE.Vector3() };
-    velVar.material.uniforms.groupInertia = { value: CONFIG.boids.groupInertia };
-    velVar.material.uniforms.vortexStrength = { value: 0.0 };
-    velVar.material.uniforms.boidSpeed = { value: boidSpeedMultiplier };
-    velVar.material.uniforms.predatorRange = { value: CONFIG.predator.influenceRange };
-    velVar.material.uniforms.predatorStrength = { value: CONFIG.predator.influenceStrength };
-    velVar.material.uniforms.predatorSpeedLimitBoost = { value: CONFIG.predator.speedLimitBoost };
-    velVar.material.uniforms.speedLimit = { value: CONFIG.shader.speedLimit };
-    velVar.material.uniforms.centerPullStrength = { value: CONFIG.shader.centerPullStrength };
-    velVar.material.uniforms.centerYScale = { value: CONFIG.shader.centerYScale };
-    velVar.material.uniforms.separationStrength = { value: CONFIG.shader.separationStrength };
-    velVar.material.uniforms.cohesionStrength = { value: CONFIG.shader.cohesionStrength };
-    velVar.material.uniforms.alignmentStrength = { value: CONFIG.shader.alignmentStrength };
-    velVar.material.uniforms.leaderAttractStrength = { value: CONFIG.shader.leaderAttractStrength };
-    velVar.material.uniforms.randomMix = { value: CONFIG.shader.randomMix };
-    velVar.material.uniforms.vortexForceScale = { value: CONFIG.shader.vortexForceScale };
-    velVar.material.uniforms.gravityStrength = { value: CONFIG.shader.gravityStrength };
-    // Definir la constante 'bounds' en el shader de velocidad (depredador y límites)
-    velVar.material.defines.bounds = bounds.toFixed(2);
-    // Configurar wrapping (repetición) de las texturas de simulación
-    velVar.wrapS = velVar.wrapT = THREE.RepeatWrapping;
-    posVar.wrapS = posVar.wrapT = THREE.RepeatWrapping;
-    // Inicializar el nuevo sistema de computación GPU
-    const error = newCompute.init();
-    if (error !== null) {
-        console.error(error);
-    }
-    // Reemplazar el estado en el modulo de computacion GPU con las nuevas referencias
-    Compute.setComputeState({
-        gpu_allocation: newCompute,
-        velocity_variable: velVar,
-        position_variable: posVar,
-        currentResolution: newRes
-    });
-
+    return active;
 }
 
 // Eventos de teclado globales para controlar velocidad del líder y visibilidad de líder/depredador
@@ -598,9 +522,15 @@ window.addEventListener('keydown', (event) => {
         leaderMesh.visible = leaderVisible;
         updateHUD();
     } else if (event.key === 'p' || event.key === 'P') {
-        // Mostrar/Ocultar depredador
-        predatorVisible = !predatorVisible;
-        predatorMesh.visible = predatorVisible;
+        // Mostrar/Ocultar todos los depredadores
+        const anyEnabled = predatorConfigs.some((cfg) => cfg.enabled);
+        const nextEnabled = !anyEnabled;
+        predatorConfigs.forEach((cfg, index) => {
+            cfg.enabled = nextEnabled;
+            cfg.visible = nextEnabled;
+            const mesh = predatorMeshes[index];
+            if (mesh) mesh.visible = cfg.visible && cfg.enabled;
+        });
         updateHUD();
     }
 });
@@ -609,16 +539,10 @@ window.addEventListener('keydown', (event) => {
 export {
     initBirds,
     birdMeshes,
-    leaderMesh,
-    predatorMesh,
     leaderPosition,
     leaderVelocity,
     leaderAcceleration,
-    predatorPosition,
-    predatorVelocity,
-    leaderChangeTimer,
-    predatorChangeTimer,
-    bounds,
+    getActivePredatorPositions,
     updateLeader,
-    updatePredator
+    updatePredators
 };
