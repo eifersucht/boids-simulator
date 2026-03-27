@@ -16,6 +16,12 @@ Abrir en navegador:
 http://localhost:8000
 ```
 
+Verificacion rapida:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/quick-check.ps1
+```
+
 ## Estructura principal
 
 - `index.html`: carga de scripts base y entrada ESM.
