@@ -47,6 +47,11 @@ export const BoidVelocityFragmentShader = `
 
     const float UPPER_bounds = bounds;
     const float LOWER_bounds = -UPPER_bounds;
+    vec3 safeNormalize(vec3 v) {
+        float lenSq = dot(v, v);
+        if (lenSq < 1e-8) return vec3(0.0);
+        return v * inversesqrt(lenSq);
+    }
     void main() {
         zoneRadius = seperation_distance + alignment_distance + cohesion_distance;
         separationThresh = seperation_distance / zoneRadius;
@@ -68,7 +73,7 @@ export const BoidVelocityFragmentShader = `
             float predatorDist = length(predatorDir);
             if (predatorDist < predatorRange) {
                 float strength = (1.0 - (predatorDist / predatorRange)) * del_change * predatorStrength;
-                velocity += normalize(predatorDir) * strength;
+                velocity += safeNormalize(predatorDir) * strength;
                 limit += predatorSpeedLimitBoost;
             }
         }
@@ -97,7 +102,7 @@ export const BoidVelocityFragmentShader = `
                     neighborCount += 1.0;
 
                     if (distSq < separationThresh * zoneRadiusSquared) {
-                        velocity -= normalize(offset) * del_change * separationStrength;
+                        velocity -= safeNormalize(offset) * del_change * separationStrength;
                     }
                 }
             }
@@ -109,15 +114,15 @@ export const BoidVelocityFragmentShader = `
 
             vec3 toNeighborsCenter = neighborhoodCenter - birdPosition;
             toNeighborsCenter.y *= centerYScale;
-            velocity += normalize(toNeighborsCenter) * del_change * cohesionStrength;
-            velocity += normalize(averageVelocity) * del_change * alignmentStrength;
+            velocity += safeNormalize(toNeighborsCenter) * del_change * cohesionStrength;
+            velocity += safeNormalize(averageVelocity) * del_change * alignmentStrength;
         }
 
         vec3 toLeader = leader - birdPosition;
-        velocity += normalize(toLeader) * del_change * leaderAttractStrength;
+        velocity += safeNormalize(toLeader) * del_change * leaderAttractStrength;
 
         float time = clock * 0.001;
-        vec3 randomDir = normalize(vec3(
+        vec3 randomDir = safeNormalize(vec3(
             sin(time + birdPosition.y * 0.5),
             cos(time + birdPosition.x * 0.8),
             sin(time + birdPosition.z * 0.6)
@@ -127,19 +132,19 @@ export const BoidVelocityFragmentShader = `
         if (vortexStrength > 0.0) {
             vec3 toSelf = birdPosition - leader;
             float distVortex = length(toSelf) + 0.01;
-            vec3 vortexForce = normalize(cross(toSelf, vec3(0.0, 1.0, 0.0))) / distVortex;
+            vec3 vortexForce = safeNormalize(cross(toSelf, vec3(0.0, 1.0, 0.0))) / distVortex;
             velocity += vortexForce * vortexStrength * del_change * vortexForceScale;
         }
 
         velocity.y -= birdPosition.y * gravityStrength * del_change;
-        velocity += normalize(globalDrift + windField) * del_change;
+        velocity += safeNormalize(globalDrift + windField) * del_change;
 
         // Aplica multiplicador ANTES del límite
         velocity *= boidSpeed;
 
         float velLength = length(velocity);
         if (velLength > limit) {
-            velocity = normalize(velocity) * limit;
+            velocity = safeNormalize(velocity) * limit;
         }
 
         gl_FragColor = vec4(velocity, 1.0);
