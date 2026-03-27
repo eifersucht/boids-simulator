@@ -197,24 +197,11 @@ function stopRecording() {
 
 function createRecordingButton() {
     const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.top = '10px';
-    container.style.right = '10px';
-    container.style.zIndex = '10000';
-    container.style.textAlign = 'right';
+    container.id = 'recordingContainer';
 
     const button = document.createElement('button');
     button.id = 'startStopRecording';
     button.innerText = 'Grabar';
-    button.style.padding = '10px 20px';
-    container.style.background = 'white';
-    container.style.color = 'black';
-    container.style.border = '1px solid black';
-    button.style.fontSize = '16px';
-    button.style.border = 'none';
-    button.style.borderRadius = '5px';
-    button.style.cursor = 'pointer';
-    button.style.marginBottom = '5px';
 
     button.onclick = () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -226,9 +213,6 @@ function createRecordingButton() {
 
     const recordingInfo = document.createElement('div');
     recordingInfo.id = 'recordingInfo';
-    recordingInfo.style.color = 'black';
-    recordingInfo.style.fontSize = '14px';
-    recordingInfo.style.marginTop = '4px';
 
     container.appendChild(button);
     container.appendChild(recordingInfo);
