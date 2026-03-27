@@ -5,7 +5,7 @@ import { CONFIG } from './config.js';
 import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, getActivePredatorPositions } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
 import { initComputeRenderer, gpu_allocation, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
-import { initRecording, createRecordingButton, onRecordingKeyDown } from './submodule/recording.js';
+import { initRecording, createRecordingButton, onRecordingKeyDown, isRecordingActive } from './submodule/recording.js';
 import { syncBoidUniforms } from './submodule/uniformSync.js';
 
 if (!Detector.webgl) Detector.addGetWebGLMessage();
@@ -24,6 +24,7 @@ const initialResolution = Math.ceil(Math.sqrt(initialBoidsCount));
 
 let last = performance.now();
 const bounds = CONFIG.simulation.bounds;
+let frameCount = 0;
 
 init();
 animate();
@@ -51,6 +52,7 @@ function animate() {
 }
 
 function render() {
+    frameCount += 1;
     const now = performance.now();
     // Calcular intervalo de tiempo (delta) desde el último frame en segundos
     let delta = (now - last) / 1000;
@@ -82,23 +84,31 @@ function render() {
     gpu_allocation.compute();
 
     // Leer las posiciones calculadas de los boids desde la textura de posición GPU
-    const width = currentResolution;
-    const height = currentResolution;
-    if (!render.readPixelsBuffer || render.readPixelsBuffer.length !== width * height * 4) {
-        render.readPixelsBuffer = new Float32Array(width * height * 4);
-    }
-    const readPixels = render.readPixelsBuffer;
-    renderer.readRenderTargetPixels(
-        gpu_allocation.getCurrentRenderTarget(position_variable),
-        0, 0, width, height,
-        readPixels
-    );
-    // Actualizar la posición de cada boid en la escena utilizando los datos leídos
-    for (let i = 0; i < birdMeshes.length; i++) {
-        const x = readPixels[i * 4];
-        const y = readPixels[i * 4 + 1];
-        const z = readPixels[i * 4 + 2];
-        birdMeshes[i].position.set(x, y, z);
+    const optimizationEnabled = !!CONFIG.performance?.readbackOptimizationEnabled;
+    const configuredStride = Math.max(1, Math.floor(CONFIG.performance?.readbackStride || 1));
+    const stride = optimizationEnabled ? configuredStride : 1;
+    const readbackStride = isRecordingActive() ? 1 : stride;
+    const shouldReadback = frameCount === 1 || frameCount % readbackStride === 0;
+
+    if (shouldReadback) {
+        const width = currentResolution;
+        const height = currentResolution;
+        if (!render.readPixelsBuffer || render.readPixelsBuffer.length !== width * height * 4) {
+            render.readPixelsBuffer = new Float32Array(width * height * 4);
+        }
+        const readPixels = render.readPixelsBuffer;
+        renderer.readRenderTargetPixels(
+            gpu_allocation.getCurrentRenderTarget(position_variable),
+            0, 0, width, height,
+            readPixels
+        );
+        // Actualizar la posición de cada boid en la escena utilizando los datos leídos
+        for (let i = 0; i < birdMeshes.length; i++) {
+            const x = readPixels[i * 4];
+            const y = readPixels[i * 4 + 1];
+            const z = readPixels[i * 4 + 2];
+            birdMeshes[i].position.set(x, y, z);
+        }
     }
 
     // Renderizar la escena con la cámara principal

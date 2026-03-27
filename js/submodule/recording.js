@@ -123,10 +123,15 @@ function onRecordingKeyDown(event) {
     }
 }
 
+function isRecordingActive() {
+    return !!(mediaRecorder && mediaRecorder.state === 'recording');
+}
+
 export {
     initRecording,
     startRecording,
     stopRecording,
     createRecordingButton,
-    onRecordingKeyDown
+    onRecordingKeyDown,
+    isRecordingActive
 };

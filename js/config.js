@@ -18,6 +18,11 @@ export const CONFIG = {
         fps: 60 // Increase => smoother capture, higher CPU. Decrease => lighter capture.
     },
 
+    performance: {
+        readbackOptimizationEnabled: false, // Enable to reduce GPU->CPU readback frequency.
+        readbackStride: 2 // Readback every N frames when optimization is enabled.
+    },
+
     // Boid visual defaults.
     boids: {
         sizeDefault: 3, // Increase => bigger boids. Decrease => smaller boids.
