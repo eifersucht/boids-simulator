@@ -19,7 +19,7 @@ export const CONFIG = {
     },
 
     performance: {
-        readbackOptimizationEnabled: false, // Enable to reduce GPU->CPU readback frequency.
+        readbackOptimizationEnabled: true, // Enable to reduce GPU->CPU readback frequency.
         readbackStride: 2 // Readback every N frames when optimization is enabled.
     },
 

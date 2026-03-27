@@ -168,6 +168,13 @@ function initBirds(scene, renderer) {
         <label>Velocidad general de boids:</label><br>
         <input type="number" id="boidSpeed" value="${CONFIG.boids.speedDefault}" min="0.1" max="10" step="0.1"><br><br>
 
+        <label>Modo de rendimiento:</label><br>
+        <select id="performancePreset">
+            <option value="quality">Calidad</option>
+            <option value="balanced">Balanceado</option>
+            <option value="performance">Rendimiento</option>
+        </select><br><br>
+
         <div>Depredadores:</div>
         <div id="predatorsPanel"></div>
     </div>
@@ -186,7 +193,7 @@ function initBirds(scene, renderer) {
         predatorsPanel.innerHTML = '';
         predatorConfigs.forEach((cfg, index) => {
             const row = document.createElement('div');
-            row.style.marginBottom = '6px';
+            row.className = 'predator-row';
 
             const toggle = document.createElement('input');
             toggle.type = 'checkbox';
@@ -203,8 +210,7 @@ function initBirds(scene, renderer) {
             speed.max = '10';
             speed.step = '0.1';
             speed.value = cfg.aggression.toFixed(1);
-            speed.style.width = '70px';
-            speed.style.marginLeft = '8px';
+            speed.className = 'predator-speed-input';
 
             toggle.addEventListener('change', (e) => {
                 cfg.enabled = e.target.checked;
@@ -271,6 +277,36 @@ function initBirds(scene, renderer) {
             cambiarVelocidadBoids(nuevaVelocidad);
         }
     });
+
+    const performancePreset = document.getElementById('performancePreset');
+    if (performancePreset) {
+        const enabled = !!CONFIG.performance?.readbackOptimizationEnabled;
+        const stride = Math.max(1, Math.floor(CONFIG.performance?.readbackStride || 1));
+        if (!enabled || stride <= 1) {
+            performancePreset.value = 'quality';
+        } else if (stride === 2) {
+            performancePreset.value = 'balanced';
+        } else {
+            performancePreset.value = 'performance';
+        }
+
+        performancePreset.addEventListener('change', (e) => {
+            const value = e.target.value;
+            if (!CONFIG.performance) {
+                CONFIG.performance = { readbackOptimizationEnabled: false, readbackStride: 1 };
+            }
+            if (value === 'quality') {
+                CONFIG.performance.readbackOptimizationEnabled = false;
+                CONFIG.performance.readbackStride = 1;
+            } else if (value === 'balanced') {
+                CONFIG.performance.readbackOptimizationEnabled = true;
+                CONFIG.performance.readbackStride = 2;
+            } else {
+                CONFIG.performance.readbackOptimizationEnabled = true;
+                CONFIG.performance.readbackStride = 3;
+            }
+        });
+    }
 
     // Inicializar el valor de velocidad de los boids en el input
     document.getElementById('boidSpeed').value = boidSpeedMultiplier.toFixed(1);
