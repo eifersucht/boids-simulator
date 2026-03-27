@@ -10,6 +10,12 @@ Desde la raiz del proyecto:
 python -m http.server 8000
 ```
 
+Atajo con script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/serve.ps1
+```
+
 Abrir en navegador:
 
 ```text
@@ -51,3 +57,7 @@ powershell -ExecutionPolicy Bypass -File scripts/quick-check.ps1
 - La simulacion se calcula en GPU y la posicion final se lee cada frame para actualizar mallas.
 - `CONFIG.predator.maxCount` define el tamano de arreglo de depredadores en shader.
 - El HUD permite cambiar cantidad de boids, velocidad global, tamano y estado de depredadores.
+- El selector `Modo de rendimiento` en HUD ajusta `CONFIG.performance` en runtime:
+  - `Calidad`: readback completo.
+  - `Balanceado`: readback cada 2 frames.
+  - `Rendimiento`: readback cada 3 frames.
