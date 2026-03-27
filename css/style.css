@@ -11,6 +11,10 @@ html, body {
 			display: block;
 		}
 
+		#info {
+			margin-top: -6%;
+		}
+
 		#hud {
 			position: fixed;
 			top: 30px;
