@@ -28,7 +28,7 @@ let leaderVisible = false;         // Visibilidad del líder (inicialmente ocult
 let boidSpeedMultiplier = CONFIG.boids.speedDefault;   // Velocidad general de los boids (multiplicador)
 
 // Límite de movimiento (caja de simulación)
-const bounds = CONFIG.bounds;
+const bounds = CONFIG.simulation.bounds;
 
 // Geometría y material compartidos para las aves (boids)
 let boidGeometry;

@@ -12,8 +12,8 @@ if (!Detector.webgl) Detector.addGetWebGLMessage();
 
 // Determinar la cantidad inicial de boids desde el hash de URL o el valor por defecto.
 const hash = document.location.hash.substr(1);
-const hashValue = hash ? parseInt(hash, 10) : CONFIG.defaultGridSize;
-const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : CONFIG.defaultGridSize;
+const hashValue = hash ? parseInt(hash, 10) : CONFIG.simulation.defaultGridSize;
+const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : CONFIG.simulation.defaultGridSize;
 const initialBoidsCount = normalizedHash * normalizedHash;
 // Mostrar la cantidad inicial en el elemento indicador de boids
 const birdsLabel = document.getElementById('birds');
@@ -23,7 +23,7 @@ if (birdsLabel) birdsLabel.innerText = initialBoidsCount;
 const initialResolution = Math.ceil(Math.sqrt(initialBoidsCount));
 
 let last = performance.now();
-const bounds = CONFIG.bounds;
+const bounds = CONFIG.simulation.bounds;
 
 init();
 animate();
@@ -54,7 +54,7 @@ function render() {
     const now = performance.now();
     // Calcular intervalo de tiempo (delta) desde el último frame en segundos
     let delta = (now - last) / 1000;
-    if (delta > CONFIG.maxDeltaSeconds) delta = CONFIG.maxDeltaSeconds;  // Limitar delta para evitar saltos bruscos
+    if (delta > CONFIG.simulation.maxDeltaSeconds) delta = CONFIG.simulation.maxDeltaSeconds;  // Limitar delta para evitar saltos bruscos
     last = now;
 
     // Actualizar uniformes de tiempo en shaders de posición y velocidad de boids

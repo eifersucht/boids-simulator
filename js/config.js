@@ -2,14 +2,16 @@
 // Notes use ASCII only to avoid encoding issues.
 
 export const CONFIG = {
-    // Simulation box half-size. Increase => more space, lower density. Decrease => tighter flock.
-    bounds: 600,
+    simulation: {
+        // Simulation box half-size. Increase => more space, lower density. Decrease => tighter flock.
+        bounds: 600,
 
-    // Default grid side used when no hash or UI is present. Boid count = grid^2.
-    defaultGridSize: 64,
+        // Default grid side used when no hash or UI is present. Boid count = grid^2.
+        defaultGridSize: 64,
 
-    // Clamp delta time (seconds). Increase => allows bigger time steps. Decrease => more stability.
-    maxDeltaSeconds: 1,
+        // Clamp delta time (seconds). Increase => allows bigger time steps. Decrease => more stability.
+        maxDeltaSeconds: 1
+    },
 
     // Recording settings.
     recording: {
@@ -92,6 +94,8 @@ export const CONFIG = {
         gravityStrength: 0.008 // Increase => stronger vertical damping.
     },
 
-    // Global drift (wind) strength.
-    driftSpeed: 0.2 // Increase => stronger ambient drift.
+    environment: {
+        // Global drift (wind) strength.
+        driftSpeed: 0.2 // Increase => stronger ambient drift.
+    }
 };
