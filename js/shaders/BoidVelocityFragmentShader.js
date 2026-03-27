@@ -1,7 +1,11 @@
 // js/shaders/BoidVelocityFragmentShader.js
 
+import { CONFIG } from '../config.js';
+
+const MAX_PREDATORS = Math.max(1, Math.floor(CONFIG.predator?.maxCount || 1));
+
 export const BoidVelocityFragmentShader = `
-    #define MAX_PREDATORS 4
+    #define MAX_PREDATORS ${MAX_PREDATORS}
     uniform float clock;
     uniform float testing;
     uniform float del_change;
