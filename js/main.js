@@ -12,8 +12,9 @@ if (!Detector.webgl) Detector.addGetWebGLMessage();
 
 // Determinar la cantidad inicial de boids desde el hash de URL o el valor por defecto.
 const hash = document.location.hash.substr(1);
-const hashValue = hash ? parseInt(hash, 10) : CONFIG.simulation.defaultGridSize;
-const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : CONFIG.simulation.defaultGridSize;
+const defaultGridSize = CONFIG.simulation?.defaultGridSize ?? CONFIG.defaultGridSize ?? 64;
+const hashValue = hash ? parseInt(hash, 10) : defaultGridSize;
+const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : defaultGridSize;
 const initialBoidsCount = normalizedHash * normalizedHash;
 // Mostrar la cantidad inicial en el elemento indicador de boids
 const birdsLabel = document.getElementById('birds');
@@ -23,7 +24,7 @@ if (birdsLabel) birdsLabel.innerText = initialBoidsCount;
 const initialResolution = Math.ceil(Math.sqrt(initialBoidsCount));
 
 let last = performance.now();
-const bounds = CONFIG.simulation.bounds;
+const bounds = CONFIG.simulation?.bounds ?? CONFIG.bounds ?? 600;
 let frameCount = 0;
 let smoothedDelta = 1 / 60;
 
@@ -57,7 +58,8 @@ function render() {
     const now = performance.now();
     // Calcular intervalo de tiempo (delta) desde el último frame en segundos
     let delta = (now - last) / 1000;
-    if (delta > CONFIG.simulation.maxDeltaSeconds) delta = CONFIG.simulation.maxDeltaSeconds;  // Limitar delta para evitar saltos bruscos
+    const maxDeltaSeconds = CONFIG.simulation?.maxDeltaSeconds ?? CONFIG.maxDeltaSeconds ?? 1;
+    if (delta > maxDeltaSeconds) delta = maxDeltaSeconds;  // Limitar delta para evitar saltos bruscos
     last = now;
     smoothedDelta = smoothedDelta * 0.9 + delta * 0.1;
     const fps = 1 / Math.max(smoothedDelta, 1e-6);

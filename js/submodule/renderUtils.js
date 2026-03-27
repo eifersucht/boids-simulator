@@ -2,7 +2,7 @@
 import { CONFIG } from '../config.js';
 
 function driftUniformUpdater(uniformVelocity, now) {
-    const driftSpeed = CONFIG.environment.driftSpeed;
+    const driftSpeed = CONFIG.environment?.driftSpeed ?? CONFIG.driftSpeed ?? 0.2;
     uniformVelocity.globalDrift.value.set(
         Math.sin(now * 0.00015) * driftSpeed,
         Math.cos(now * 0.0001) * driftSpeed,
