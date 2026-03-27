@@ -16,6 +16,11 @@ export const CONFIG = {
         fps: 60 // Increase => smoother capture, higher CPU. Decrease => lighter capture.
     },
 
+    // CPU-side render sync. Readback from GPU every N frames.
+    render: {
+        readbackEveryNFrames: 2 // Increase => better performance, lower visual update rate.
+    },
+
     // Boid visual defaults.
     boids: {
         sizeDefault: 3, // Increase => bigger boids. Decrease => smaller boids.
