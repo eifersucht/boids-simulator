@@ -1,5 +1,6 @@
 // js/main.js
 
+import '../css/style.css';
 import { initScene, onWindowResize, scene, camera, renderer } from './submodule/sceneSetup.js';
 import { CONFIG } from './config.js';
 import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, getActivePredatorPositions, updatePerformanceHUD } from './submodule/birdSystem.js';

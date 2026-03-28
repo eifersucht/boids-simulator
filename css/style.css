@@ -1,94 +1,112 @@
-html,
-body {
-    background-color: transparent;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    overflow: hidden;
-    cursor: pointer;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply m-0 h-full w-full overflow-hidden bg-transparent font-sans;
+  }
+
+  canvas {
+    @apply block;
+  }
 }
 
-canvas {
-    display: block;
-}
-
-#info {
+@layer components {
+  #info {
     margin-top: -6%;
-}
+  }
 
-#hud {
-    position: fixed;
-    top: 30px;
-    left: 0;
-    width: 280px;
-    height: auto;
-    padding: 20px;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    border-right: 1px solid #444;
-    z-index: 1000;
-    transform: translateX(0);
-    opacity: 1;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    overflow-y: auto;
-}
+  #hud {
+    @apply fixed left-4 top-4 z-[1000] max-h-[calc(100vh-32px)] w-80 overflow-y-auto border border-slate-300 bg-slate-50/90 p-4 text-[13px] text-slate-900 shadow-2xl transition-all duration-200 ease-out;
+  }
 
-#hud.hidden {
-    transform: translateX(-100%);
-    opacity: 0;
-    pointer-events: none;
-}
+  #hud.hud-collapsed {
+    @apply pointer-events-none -translate-x-[calc(100%+24px)] opacity-0;
+  }
 
-#hudToggle {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    width: 30px;
-    height: 30px;
-    line-height: 30px;
-    text-align: center;
-    background-color: #222;
-    color: white;
-    border-radius: 5px;
+  #hudToggle {
+    @apply fixed left-4 top-4 z-[1100] h-7 w-10 select-none border border-slate-300 bg-slate-100 text-center text-[11px] font-bold uppercase tracking-[0.08em] text-slate-900;
+    line-height: 28px;
     cursor: pointer;
-    z-index: 1001;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-    font-size: 20px;
-}
+  }
 
-#recordingContainer {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    z-index: 10000;
-    text-align: right;
-    background: white;
-    color: black;
-    border: 1px solid black;
-}
+  #recordingContainer {
+    @apply fixed right-4 top-4 z-[10000] border border-slate-300 bg-slate-50/90 p-2 text-right text-xs text-slate-900;
+  }
 
-#startStopRecording {
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 5px;
+  #startStopRecording {
+    @apply mb-1 border border-slate-300 bg-white px-3 py-2 text-xs uppercase tracking-[0.06em] text-slate-900;
     cursor: pointer;
-    margin-bottom: 5px;
-}
+  }
 
-#recordingInfo {
-    color: black;
-    font-size: 14px;
-    margin-top: 4px;
-}
+  #recordingInfo {
+    @apply mt-1 text-sm text-slate-900;
+  }
 
-.predator-row {
-    margin-bottom: 6px;
-}
+  .hud-title-row {
+    @apply mb-2;
+  }
 
-.predator-speed-input {
-    width: 70px;
-    margin-left: 8px;
+  .hud-title {
+    @apply text-xs font-bold uppercase tracking-[0.18em];
+  }
+
+  .hud-subtitle {
+    @apply mt-0.5 text-[11px] text-slate-600;
+  }
+
+  .hud-shortcuts {
+    @apply mb-2 text-slate-600;
+    line-height: 1.35;
+  }
+
+  .hud-divider {
+    @apply my-2.5 h-px bg-slate-300;
+  }
+
+  .hud-stats {
+    @apply grid gap-1;
+  }
+
+  .hud-field {
+    @apply mb-2.5;
+  }
+
+  .hud-field label {
+    @apply mb-1 block text-[11px] uppercase tracking-[0.08em] text-slate-600;
+  }
+
+  .hud-inline {
+    @apply flex gap-2;
+  }
+
+  #hud input,
+  #hud select,
+  #hud button {
+    @apply w-full border border-slate-300 bg-white p-2 text-xs text-slate-900 outline-none;
+    box-sizing: border-box;
+    border-radius: 0;
+  }
+
+  #hud button {
+    @apply w-auto min-w-[84px] font-semibold uppercase tracking-[0.06em];
+  }
+
+  #hud input[type='color'] {
+    @apply h-9 p-1;
+  }
+
+  .predator-row {
+    @apply mb-2 flex flex-wrap items-center gap-1.5;
+  }
+
+  .predator-speed-input {
+    @apply ml-auto w-[68px];
+  }
+
+  .predator-color-input {
+    @apply h-7 w-[34px] p-0.5;
+  }
 }

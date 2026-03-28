@@ -2,24 +2,26 @@
 
 Boids simulation in Three.js with GPU computation for velocity/position and CPU mesh rendering.
 
-## Local run
+## Local run (Node + Tailwind)
 
 From the repository root:
 
-```powershell
-python -m http.server 8000
-```
-
-Shortcut script (from repository root):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/serve.ps1
+```bash
+npm install
+npm run dev
 ```
 
 Open in browser:
 
 ```text
-http://localhost:8000/
+http://localhost:5173/
+```
+
+Production build:
+
+```bash
+npm run build
+npm run preview
 ```
 
 Quick check:
