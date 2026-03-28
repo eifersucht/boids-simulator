@@ -264,10 +264,14 @@ function initBirds(scene, renderer) {
             alert('Invalid boid count.');
             return;
         }
-        const confirmReload = confirm(`The browser will reload to apply the new boid count (${nuevoNumero}). Continue?`);
+        const grid = Math.ceil(Math.sqrt(nuevoNumero));
+        const appliedBoids = grid * grid;
+        const confirmReload = confirm(
+            `The browser will reload. Requested: ${nuevoNumero}. Applied (grid ${grid}x${grid}): ${appliedBoids}. Continue?`
+        );
 
         if (confirmReload) {
-            ajustarCantidadBoids(nuevoNumero);
+            ajustarCantidadBoids(appliedBoids);
         }
     });
 
@@ -519,6 +523,7 @@ window.addEventListener('keydown', (event) => {
     ) {
         return;
     }
+    if (!leaderMesh) return;
     if (event.key === '+' || (event.key === '=' && event.shiftKey)) {
         // Increase leader speed
         leaderSpeedMultiplier += 0.1;
@@ -547,6 +552,8 @@ window.addEventListener('keydown', (event) => {
             cfg.visible = nextEnabled;
             const mesh = predatorMeshes[index];
             if (mesh) mesh.visible = cfg.visible && cfg.enabled;
+            const toggle = document.getElementById(`predatorToggle_${index}`);
+            if (toggle) toggle.checked = nextEnabled;
         });
         updateHUD();
     }

@@ -8,7 +8,12 @@ import { initComputeRenderer, gpu_allocation, position_variable, uniform_positio
 import { initRecording, createRecordingButton, onRecordingKeyDown, isRecordingActive } from './submodule/recording.js';
 import { syncBoidUniforms } from './submodule/uniformSync.js';
 
-if (!Detector.webgl) Detector.addGetWebGLMessage();
+if (!Detector.webgl) {
+    Detector.addGetWebGLMessage();
+} else {
+    const started = init();
+    if (started) animate();
+}
 
 // Resolve initial boid count from URL hash or default value.
 const hash = document.location.hash.substr(1);
@@ -28,14 +33,20 @@ const bounds = CONFIG.simulation?.bounds ?? CONFIG.bounds ?? 600;
 let frameCount = 0;
 let smoothedDelta = 1 / 60;
 
-init();
-animate();
-
 function init() {
     // Initialize base 3D scene.
     initScene();
     // Initialize GPU computation system for boid simulation.
-    initComputeRenderer(renderer, initialResolution, bounds);
+    try {
+        initComputeRenderer(renderer, initialResolution, bounds);
+    } catch (error) {
+        console.error('Could not initialize GPU simulation:', error);
+        const birdsInfo = document.getElementById('birds');
+        if (birdsInfo) {
+            birdsInfo.innerText = 'GPU simulation unavailable on this device/browser.';
+        }
+        return false;
+    }
     initRecording(renderer, CONFIG.recording.fps);
 
     uniform_velocity.boidSpeed.value = CONFIG.boids.speedDefault;
@@ -46,6 +57,7 @@ function init() {
     // Register keyboard events for recording ('v' start, 's' stop).
     document.addEventListener('keydown', onKeyDown, false);
     window.addEventListener('resize', onWindowResize, false);
+    return true;
 }
 
 function animate() {

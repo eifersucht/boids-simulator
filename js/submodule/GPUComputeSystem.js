@@ -73,7 +73,7 @@ function initComputeRenderer(renderer, resolution, bounds) {
 
     const error = gpu_allocation.init();
     if (error !== null) {
-        console.error(error);
+        throw new Error(`GPUComputationRenderer init failed: ${error}`);
     }
 }
 
