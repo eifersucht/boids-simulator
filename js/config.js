@@ -21,7 +21,24 @@ export const CONFIG = {
     performance: {
         readbackOptimizationEnabled: true, // Enable to reduce GPU->CPU readback frequency.
         readbackStride: 2, // Readback every N frames when optimization is enabled.
-        neighborSampleCount: 128 // Number of sampled neighbors in velocity shader (higher => more fidelity, more GPU cost).
+        neighborSampleCount: 128, // Number of sampled neighbors in velocity shader (higher => more fidelity, more GPU cost).
+        presets: {
+            quality: {
+                readbackOptimizationEnabled: false,
+                readbackStride: 1,
+                neighborSampleCount: 160
+            },
+            balanced: {
+                readbackOptimizationEnabled: true,
+                readbackStride: 2,
+                neighborSampleCount: 128
+            },
+            performance: {
+                readbackOptimizationEnabled: true,
+                readbackStride: 3,
+                neighborSampleCount: 96
+            }
+        }
     },
 
     // Boid visual defaults.

@@ -203,6 +203,14 @@ function initBirds(scene, renderer) {
         </select>
     </div>
     <div class="hud-field">
+        <label for="neighborSampleCount">Neighbor samples</label>
+        <select id="neighborSampleCount">
+            <option value="96">96</option>
+            <option value="128">128</option>
+            <option value="160">160</option>
+        </select>
+    </div>
+    <div class="hud-field">
         <label>Predators</label>
         <div id="predatorsPanel"></div>
     </div>
@@ -355,31 +363,62 @@ function initBirds(scene, renderer) {
     });
 
     const performancePreset = document.getElementById('performancePreset');
+    const neighborSampleCount = document.getElementById('neighborSampleCount');
+    const applyPerformanceConfig = (cfg) => {
+        if (!CONFIG.performance) {
+            CONFIG.performance = {
+                readbackOptimizationEnabled: false,
+                readbackStride: 1,
+                neighborSampleCount: 128,
+                presets: {}
+            };
+        }
+        CONFIG.performance.readbackOptimizationEnabled = !!cfg.readbackOptimizationEnabled;
+        CONFIG.performance.readbackStride = Math.max(1, Math.floor(cfg.readbackStride || 1));
+        CONFIG.performance.neighborSampleCount = Math.max(16, Math.min(256, Math.floor(cfg.neighborSampleCount || 128)));
+        if (uniform_velocity && uniform_velocity.neighborSampleCount) {
+            uniform_velocity.neighborSampleCount.value = CONFIG.performance.neighborSampleCount;
+        }
+        if (neighborSampleCount) {
+            neighborSampleCount.value = String(CONFIG.performance.neighborSampleCount);
+        }
+    };
     if (performancePreset) {
-        const enabled = !!CONFIG.performance?.readbackOptimizationEnabled;
-        const stride = Math.max(1, Math.floor(CONFIG.performance?.readbackStride || 1));
-        if (!enabled || stride <= 1) {
+        const presets = CONFIG.performance?.presets || {};
+        const currentSamples = Math.max(16, Math.floor(CONFIG.performance?.neighborSampleCount || 128));
+        if (currentSamples >= 160) {
             performancePreset.value = 'quality';
-        } else if (stride === 2) {
-            performancePreset.value = 'balanced';
-        } else {
+        } else if (currentSamples <= 96) {
             performancePreset.value = 'performance';
+        } else {
+            performancePreset.value = 'balanced';
+        }
+        if (neighborSampleCount) {
+            neighborSampleCount.value = String(currentSamples);
         }
 
         performancePreset.addEventListener('change', (e) => {
             const value = e.target.value;
-            if (!CONFIG.performance) {
-                CONFIG.performance = { readbackOptimizationEnabled: false, readbackStride: 1 };
+            const presetConfig = presets[value];
+            if (presetConfig) {
+                applyPerformanceConfig(presetConfig);
             }
-            if (value === 'quality') {
-                CONFIG.performance.readbackOptimizationEnabled = false;
-                CONFIG.performance.readbackStride = 1;
-            } else if (value === 'balanced') {
-                CONFIG.performance.readbackOptimizationEnabled = true;
-                CONFIG.performance.readbackStride = 2;
+        });
+    }
+    if (neighborSampleCount) {
+        neighborSampleCount.addEventListener('change', (e) => {
+            const next = Math.max(16, Math.min(256, Math.floor(parseInt(e.target.value, 10) || 128)));
+            applyPerformanceConfig({
+                readbackOptimizationEnabled: !!CONFIG.performance?.readbackOptimizationEnabled,
+                readbackStride: Math.max(1, Math.floor(CONFIG.performance?.readbackStride || 1)),
+                neighborSampleCount: next
+            });
+            if (next >= 160) {
+                if (performancePreset) performancePreset.value = 'quality';
+            } else if (next <= 96) {
+                if (performancePreset) performancePreset.value = 'performance';
             } else {
-                CONFIG.performance.readbackOptimizationEnabled = true;
-                CONFIG.performance.readbackStride = 3;
+                if (performancePreset) performancePreset.value = 'balanced';
             }
         });
     }
@@ -544,7 +583,8 @@ function updatePerformanceHUD(fps, frameMs, perfWindowMetrics = null) {
         hudElements.performanceDetailInfo.innerText =
             `Avg(${Math.round(readbackRatio * 100)}% rb): ` +
             `${avgFps.toFixed(1)} FPS, ${avgFrameMs.toFixed(2)} ms | ` +
-            `RB ${avgReadbackMs.toFixed(2)} ms, Sync ${avgMeshSyncMs.toFixed(2)} ms`;
+            `RB ${avgReadbackMs.toFixed(2)} ms, Sync ${avgMeshSyncMs.toFixed(2)} ms | ` +
+            `NS ${Math.floor(CONFIG.performance?.neighborSampleCount || 128)}`;
     }
 }
 
