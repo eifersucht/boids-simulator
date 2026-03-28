@@ -270,12 +270,24 @@ function initBirds(scene, renderer) {
                 }
             });
 
-            row.appendChild(toggle);
-            row.appendChild(label);
-            row.appendChild(visibleToggle);
-            row.appendChild(visibleLabel);
-            row.appendChild(speed);
-            row.appendChild(color);
+            const nameGroup = document.createElement('div');
+            nameGroup.className = 'predator-name-group';
+            nameGroup.appendChild(toggle);
+            nameGroup.appendChild(label);
+
+            const visibleGroup = document.createElement('div');
+            visibleGroup.className = 'predator-visible-group';
+            visibleGroup.appendChild(visibleToggle);
+            visibleGroup.appendChild(visibleLabel);
+
+            const controlsGroup = document.createElement('div');
+            controlsGroup.className = 'predator-controls-group';
+            controlsGroup.appendChild(speed);
+            controlsGroup.appendChild(color);
+
+            row.appendChild(nameGroup);
+            row.appendChild(visibleGroup);
+            row.appendChild(controlsGroup);
             predatorsPanel.appendChild(row);
         });
     }

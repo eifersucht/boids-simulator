@@ -19,7 +19,7 @@
   }
 
   #hud {
-    @apply fixed left-4 top-4 z-[1000] max-h-[calc(100vh-32px)] w-80 overflow-y-auto border border-slate-300 bg-slate-50/90 p-4 text-[13px] text-slate-900 shadow-2xl transition-all duration-200 ease-out;
+    @apply fixed left-4 top-4 z-[1000] max-h-[calc(100vh-32px)] w-[340px] max-w-[calc(100vw-32px)] overflow-y-auto border border-slate-300/70 bg-slate-50/70 p-4 text-[13px] text-slate-900 shadow-2xl backdrop-blur-[2px] transition-all duration-200 ease-out;
   }
 
   #hud.hud-collapsed {
@@ -46,7 +46,7 @@
   }
 
   .hud-title-row {
-    @apply mb-2;
+    @apply mb-2 pl-12;
   }
 
   .hud-title {
@@ -58,7 +58,7 @@
   }
 
   .hud-shortcuts {
-    @apply mb-2 text-slate-600;
+    @apply mb-2 pl-12 text-slate-600;
     line-height: 1.35;
   }
 
@@ -67,7 +67,7 @@
   }
 
   .hud-stats {
-    @apply grid gap-1;
+    @apply grid gap-1 leading-5;
   }
 
   .hud-field {
@@ -99,14 +99,35 @@
   }
 
   .predator-row {
-    @apply mb-2 flex flex-wrap items-center gap-1.5;
+    @apply mb-2 grid grid-cols-[minmax(120px,1fr)_auto_auto] items-center gap-2;
+  }
+
+  .predator-name-group,
+  .predator-visible-group,
+  .predator-controls-group {
+    @apply flex items-center gap-1.5;
+  }
+
+  .predator-name-group label,
+  .predator-visible-group label {
+    @apply mb-0 tracking-normal normal-case text-[12px] text-slate-700;
   }
 
   .predator-speed-input {
-    @apply ml-auto w-[68px];
+    @apply w-[68px];
   }
 
   .predator-color-input {
     @apply h-7 w-[34px] p-0.5;
+  }
+
+  @media (max-width: 900px) {
+    .predator-row {
+      @apply grid-cols-1 gap-1;
+    }
+
+    .predator-controls-group {
+      @apply justify-end;
+    }
   }
 }
