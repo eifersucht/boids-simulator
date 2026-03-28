@@ -168,7 +168,12 @@ function initBirds(scene, renderer) {
     </div>
     <div class="hud-shortcuts">+/- speed, R reset, L leader, P predators, H panel</div>
 
-    <section class="hud-section">
+    <div class="hud-tabs">
+        <button type="button" class="hud-tab active" data-tab="main">Main Flock</button>
+        <button type="button" class="hud-tab" data-tab="extra">Extra Flock</button>
+    </div>
+
+    <section class="hud-section hud-tab-panel active" data-panel="main">
         <div class="hud-section-title">Status</div>
         <div class="hud-stats">
             <div id="speedInfo"></div>
@@ -247,6 +252,44 @@ function initBirds(scene, renderer) {
         <div class="hud-section-title">Predators <button type="button" class="info-btn" data-info="Configure each predator: enabled, visibility, aggression and color.">i</button></div>
         <div id="predatorsPanel"></div>
     </section>
+    </section>
+
+    <section class="hud-section hud-tab-panel" data-panel="extra">
+        <div class="hud-section-title">Extra Flock <button type="button" class="info-btn" data-info="Creates a second independent flock simulation with its own controls.">i</button></div>
+        <div class="hud-field hud-toggles">
+            <label class="hud-inline-toggle"><input type="checkbox" id="extraFlockEnabled"> Enable extra flock</label>
+        </div>
+        <div id="extraFlockControls" class="extra-flock-controls extra-disabled">
+            <div class="hud-field">
+                <div class="hud-label-row">
+                    <label for="extraFlockCount">Boid count</label>
+                    <button type="button" class="info-btn" data-info="Number of boids for the extra flock simulation.">i</button>
+                </div>
+                <input type="number" id="extraFlockCount" value="1024" min="16" max="10000" step="16">
+            </div>
+            <div class="hud-field">
+                <div class="hud-label-row">
+                    <label for="extraFlockSpeed">Speed</label>
+                    <button type="button" class="info-btn" data-info="Velocity multiplier for the extra flock only.">i</button>
+                </div>
+                <input type="number" id="extraFlockSpeed" value="1.0" min="0.1" max="10" step="0.1">
+            </div>
+            <div class="hud-field">
+                <div class="hud-label-row">
+                    <label for="extraFlockSize">Size</label>
+                    <button type="button" class="info-btn" data-info="Visual mesh scale for the extra flock.">i</button>
+                </div>
+                <input type="number" id="extraFlockSize" value="2.5" min="0.5" max="20" step="0.5">
+            </div>
+            <div class="hud-field">
+                <div class="hud-label-row">
+                    <label for="extraFlockColor">Color</label>
+                    <button type="button" class="info-btn" data-info="Display color for extra flock boids.">i</button>
+                </div>
+                <input type="color" id="extraFlockColor" value="#1e293b">
+            </div>
+        </div>
+    </section>
     `;
 
     document.body.appendChild(hud);
@@ -286,6 +329,18 @@ function initBirds(scene, renderer) {
     }
     infoPopup.addEventListener('click', (e) => {
         if (e.target === infoPopup) infoPopup.classList.add('info-popup-hidden');
+    });
+
+    const tabs = hud.querySelectorAll('.hud-tab');
+    const panels = hud.querySelectorAll('.hud-tab-panel');
+    tabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            const target = tab.getAttribute('data-tab');
+            tabs.forEach((item) => item.classList.toggle('active', item === tab));
+            panels.forEach((panel) => {
+                panel.classList.toggle('active', panel.getAttribute('data-panel') === target);
+            });
+        });
     });
 
     hudElements = {
@@ -543,6 +598,36 @@ function initBirds(scene, renderer) {
         // recordingContainer may be created shortly after HUD init.
         setTimeout(() => setRecordingButtonVisibility(showRecordingButton.checked), 0);
     }
+
+    const extraFlockEnabled = document.getElementById('extraFlockEnabled');
+    const extraFlockControls = document.getElementById('extraFlockControls');
+    const extraFlockCount = document.getElementById('extraFlockCount');
+    const extraFlockSpeed = document.getElementById('extraFlockSpeed');
+    const extraFlockSize = document.getElementById('extraFlockSize');
+    const extraFlockColor = document.getElementById('extraFlockColor');
+    const emitExtraFlockConfig = () => {
+        const enabled = !!extraFlockEnabled?.checked;
+        const detail = {
+            enabled,
+            count: Math.max(16, parseInt(extraFlockCount?.value || '1024', 10) || 1024),
+            speed: Math.max(0.1, parseFloat(extraFlockSpeed?.value || '1.0') || 1.0),
+            size: Math.max(0.5, parseFloat(extraFlockSize?.value || '2.5') || 2.5),
+            color: extraFlockColor?.value || '#1e293b'
+        };
+        window.dispatchEvent(new CustomEvent('extraFlockChange', { detail }));
+    };
+    if (extraFlockEnabled && extraFlockControls) {
+        extraFlockEnabled.addEventListener('change', (e) => {
+            extraFlockControls.classList.toggle('extra-disabled', !e.target.checked);
+            emitExtraFlockConfig();
+        });
+    }
+    [extraFlockCount, extraFlockSpeed, extraFlockSize, extraFlockColor].forEach((input) => {
+        if (!input) return;
+        input.addEventListener('input', emitExtraFlockConfig);
+        input.addEventListener('change', emitExtraFlockConfig);
+    });
+    emitExtraFlockConfig();
 
     // Initialize boid speed input
     document.getElementById('boidSpeed').value = boidSpeedMultiplier.toFixed(1);

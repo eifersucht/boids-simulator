@@ -11,73 +11,75 @@ let uniform_velocity;
 let currentResolution;
 
 function initComputeRenderer(renderer, resolution, bounds) {
-    currentResolution = resolution;
+    const system = createComputeSystem(renderer, resolution, bounds);
+    gpu_allocation = system.gpu_allocation;
+    velocity_variable = system.velocity_variable;
+    position_variable = system.position_variable;
+    uniform_position = system.uniform_position;
+    uniform_velocity = system.uniform_velocity;
+    currentResolution = system.currentResolution;
+}
 
-    gpu_allocation = new GPUComputationRenderer(resolution, resolution, renderer);
+function createComputeSystem(renderer, resolution, bounds) {
+    const system = {};
+    system.currentResolution = resolution;
+    system.gpu_allocation = new GPUComputationRenderer(resolution, resolution, renderer);
 
-    const dtPosition = gpu_allocation.createTexture();
-    const dtVelocity = gpu_allocation.createTexture();
-
+    const dtPosition = system.gpu_allocation.createTexture();
+    const dtVelocity = system.gpu_allocation.createTexture();
     fillPositionTexture(dtPosition);
     fillVelocityTexture(dtVelocity);
 
-    velocity_variable = gpu_allocation.addVariable("VelocityTexture", BoidVelocityFragmentShader, dtVelocity);
-    position_variable = gpu_allocation.addVariable("PositionTexture", BoidPositionFragmentShader, dtPosition);
+    system.velocity_variable = system.gpu_allocation.addVariable("VelocityTexture", BoidVelocityFragmentShader, dtVelocity);
+    system.position_variable = system.gpu_allocation.addVariable("PositionTexture", BoidPositionFragmentShader, dtPosition);
+    system.gpu_allocation.setVariableDependencies(system.velocity_variable, [system.position_variable, system.velocity_variable]);
+    system.gpu_allocation.setVariableDependencies(system.position_variable, [system.position_variable, system.velocity_variable]);
 
-    gpu_allocation.setVariableDependencies(velocity_variable, [position_variable, velocity_variable]);
-    gpu_allocation.setVariableDependencies(position_variable, [position_variable, velocity_variable]);
+    system.uniform_position = system.position_variable.material.uniforms;
+    system.uniform_velocity = system.velocity_variable.material.uniforms;
 
-    uniform_position = position_variable.material.uniforms;
-    uniform_velocity = velocity_variable.material.uniforms;
-
-    uniform_position.clock = { value: 0.0 };
-    uniform_position.del_change = { value: 0.0 };
-
-    uniform_velocity.clock = { value: 0.0 };
-    uniform_velocity.del_change = { value: 0.0 };
-    uniform_velocity.seperation_distance = { value: CONFIG.boids.separationDistance };
-    uniform_velocity.alignment_distance = { value: CONFIG.boids.alignmentDistance };
-    uniform_velocity.cohesion_distance = { value: CONFIG.boids.cohesionDistance };
-    uniform_velocity.predators = { value: [] };
-    uniform_velocity.predatorCount = { value: 0 };
-    uniform_velocity.globalDrift = { value: new THREE.Vector3() };
-    uniform_velocity.leader = { value: new THREE.Vector3() };
-
-    // Extra uniforms for dynamic realism.
-    uniform_velocity.windField = { value: new THREE.Vector3() };
-
-    uniform_velocity.vortexStrength = { value: 0.0 };
-    uniform_velocity.boidSpeed = { value: CONFIG.boids.speedDefault };
-    uniform_velocity.predatorRange = { value: CONFIG.predator.influenceRange };
-    uniform_velocity.predatorStrength = { value: CONFIG.predator.influenceStrength };
-    uniform_velocity.predatorSpeedLimitBoost = { value: CONFIG.predator.speedLimitBoost };
-    uniform_velocity.speedLimit = { value: CONFIG.shader.speedLimit };
-    uniform_velocity.centerPullStrength = { value: CONFIG.shader.centerPullStrength };
-    uniform_velocity.centerYScale = { value: CONFIG.shader.centerYScale };
-    uniform_velocity.separationStrength = { value: CONFIG.shader.separationStrength };
-    uniform_velocity.cohesionStrength = { value: CONFIG.shader.cohesionStrength };
-    uniform_velocity.alignmentStrength = { value: CONFIG.shader.alignmentStrength };
-    uniform_velocity.leaderAttractStrength = { value: CONFIG.shader.leaderAttractStrength };
-    uniform_velocity.randomMix = { value: CONFIG.shader.randomMix };
-    uniform_velocity.vortexForceScale = { value: CONFIG.shader.vortexForceScale };
-    uniform_velocity.gravityStrength = { value: CONFIG.shader.gravityStrength };
-    uniform_velocity.neighborSampleCount = {
+    system.uniform_position.clock = { value: 0.0 };
+    system.uniform_position.del_change = { value: 0.0 };
+    system.uniform_velocity.clock = { value: 0.0 };
+    system.uniform_velocity.del_change = { value: 0.0 };
+    system.uniform_velocity.seperation_distance = { value: CONFIG.boids.separationDistance };
+    system.uniform_velocity.alignment_distance = { value: CONFIG.boids.alignmentDistance };
+    system.uniform_velocity.cohesion_distance = { value: CONFIG.boids.cohesionDistance };
+    system.uniform_velocity.predators = { value: [] };
+    system.uniform_velocity.predatorCount = { value: 0 };
+    system.uniform_velocity.globalDrift = { value: new THREE.Vector3() };
+    system.uniform_velocity.leader = { value: new THREE.Vector3() };
+    system.uniform_velocity.windField = { value: new THREE.Vector3() };
+    system.uniform_velocity.vortexStrength = { value: 0.0 };
+    system.uniform_velocity.boidSpeed = { value: CONFIG.boids.speedDefault };
+    system.uniform_velocity.predatorRange = { value: CONFIG.predator.influenceRange };
+    system.uniform_velocity.predatorStrength = { value: CONFIG.predator.influenceStrength };
+    system.uniform_velocity.predatorSpeedLimitBoost = { value: CONFIG.predator.speedLimitBoost };
+    system.uniform_velocity.speedLimit = { value: CONFIG.shader.speedLimit };
+    system.uniform_velocity.centerPullStrength = { value: CONFIG.shader.centerPullStrength };
+    system.uniform_velocity.centerYScale = { value: CONFIG.shader.centerYScale };
+    system.uniform_velocity.separationStrength = { value: CONFIG.shader.separationStrength };
+    system.uniform_velocity.cohesionStrength = { value: CONFIG.shader.cohesionStrength };
+    system.uniform_velocity.alignmentStrength = { value: CONFIG.shader.alignmentStrength };
+    system.uniform_velocity.leaderAttractStrength = { value: CONFIG.shader.leaderAttractStrength };
+    system.uniform_velocity.randomMix = { value: CONFIG.shader.randomMix };
+    system.uniform_velocity.vortexForceScale = { value: CONFIG.shader.vortexForceScale };
+    system.uniform_velocity.gravityStrength = { value: CONFIG.shader.gravityStrength };
+    system.uniform_velocity.neighborSampleCount = {
         value: Math.max(16, Math.min(256, Math.floor(CONFIG.performance?.neighborSampleCount || 128)))
     };
 
+    system.velocity_variable.material.defines.bounds = bounds.toFixed(2);
+    system.velocity_variable.wrapS = THREE.RepeatWrapping;
+    system.velocity_variable.wrapT = THREE.RepeatWrapping;
+    system.position_variable.wrapS = THREE.RepeatWrapping;
+    system.position_variable.wrapT = THREE.RepeatWrapping;
 
-
-    velocity_variable.material.defines.bounds = bounds.toFixed(2);
-
-    velocity_variable.wrapS = THREE.RepeatWrapping;
-    velocity_variable.wrapT = THREE.RepeatWrapping;
-    position_variable.wrapS = THREE.RepeatWrapping;
-    position_variable.wrapT = THREE.RepeatWrapping;
-
-    const error = gpu_allocation.init();
+    const error = system.gpu_allocation.init();
     if (error !== null) {
         throw new Error(`GPUComputationRenderer init failed: ${error}`);
     }
+    return system;
 }
 
 function setComputeState(nextState) {
@@ -110,6 +112,7 @@ function fillVelocityTexture(texture) {
 }
 
 export {
+    createComputeSystem,
     initComputeRenderer,
     setComputeState,
     gpu_allocation,

@@ -67,6 +67,26 @@
     @apply my-2.5 h-px bg-slate-300;
   }
 
+  .hud-tabs {
+    @apply mb-2 grid grid-cols-2 gap-1;
+  }
+
+  .hud-tab {
+    @apply border border-slate-300 bg-white px-2 py-1 text-[11px] uppercase tracking-[0.08em] text-slate-700;
+  }
+
+  .hud-tab.active {
+    @apply border-slate-800 bg-slate-800 text-slate-100;
+  }
+
+  .hud-tab-panel {
+    @apply hidden;
+  }
+
+  .hud-tab-panel.active {
+    @apply block;
+  }
+
   .hud-section {
     @apply mb-3 border border-slate-300/70 bg-white/55 p-2.5;
   }
@@ -128,6 +148,10 @@
 
   .hud-toggles {
     @apply grid gap-1;
+  }
+
+  .extra-flock-controls.extra-disabled {
+    @apply pointer-events-none opacity-45;
   }
 
   #hud input,
