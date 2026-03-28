@@ -4,13 +4,13 @@ Boids simulation in Three.js with GPU computation for velocity/position and CPU 
 
 ## Local run
 
-From the project root:
+From the repository root:
 
 ```powershell
 python -m http.server 8000
 ```
 
-Shortcut script:
+Shortcut script (from repository root):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/serve.ps1
@@ -19,7 +19,7 @@ powershell -ExecutionPolicy Bypass -File scripts/serve.ps1
 Open in browser:
 
 ```text
-http://localhost:8000
+http://localhost:8000/
 ```
 
 Quick check:

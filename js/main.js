@@ -83,7 +83,6 @@ function render() {
     syncBoidUniforms({
         uniformVelocity: uniform_velocity,
         activePredators: getActivePredatorPositions(),
-        bounds,
         leaderPosition
     });
 

@@ -4,7 +4,6 @@ function syncBoidUniforms(params) {
     const {
         uniformVelocity,
         activePredators,
-        bounds,
         leaderPosition
     } = params;
 
@@ -23,7 +22,8 @@ function syncBoidUniforms(params) {
     for (let i = 0; i < maxPredators; i++) {
         const target = uniformVelocity.predators.value[i];
         if (i < predatorCount) {
-            target.copy(activePredators[i]).divideScalar(bounds);
+            // Keep predator coordinates in the same world space as birdPosition in the shader.
+            target.copy(activePredators[i]);
         } else {
             target.set(9999, 9999, 9999);
         }
