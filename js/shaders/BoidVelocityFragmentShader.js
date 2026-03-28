@@ -3,11 +3,11 @@
 import { CONFIG } from '../config.js';
 
 const MAX_PREDATORS = Math.max(1, Math.floor(CONFIG.predator?.maxCount || 1));
-const NEIGHBOR_SAMPLES = Math.max(16, Math.floor(CONFIG.performance?.neighborSampleCount || 128));
+const MAX_NEIGHBOR_SAMPLES = 256;
 
 export const BoidVelocityFragmentShader = `
     #define MAX_PREDATORS ${MAX_PREDATORS}
-    #define NEIGHBOR_SAMPLES ${NEIGHBOR_SAMPLES}
+    #define MAX_NEIGHBOR_SAMPLES ${MAX_NEIGHBOR_SAMPLES}
     uniform float clock;
     uniform float del_change;
     uniform float seperation_distance;
@@ -33,6 +33,7 @@ export const BoidVelocityFragmentShader = `
     uniform float randomMix;
     uniform float vortexForceScale;
     uniform float gravityStrength;
+    uniform int neighborSampleCount;
 
     float zoneRadius;
     float zoneRadiusSquared;
@@ -85,7 +86,10 @@ export const BoidVelocityFragmentShader = `
         float neighborCount = 0.0;
 
         float seed = dot(birdPosition, vec3(0.173, 0.319, 0.271)) + clock * 0.0001;
-        for (int i = 0; i < NEIGHBOR_SAMPLES; i++) {
+        for (int i = 0; i < MAX_NEIGHBOR_SAMPLES; i++) {
+            if (i >= neighborSampleCount) {
+                break;
+            }
             vec2 ref = hash22(seed + float(i) * 1.61803);
             vec3 otherPos = texture2D(PositionTexture, ref).xyz;
             vec3 otherVel = texture2D(VelocityTexture, ref).xyz;

@@ -61,6 +61,9 @@ function initComputeRenderer(renderer, resolution, bounds) {
     uniform_velocity.randomMix = { value: CONFIG.shader.randomMix };
     uniform_velocity.vortexForceScale = { value: CONFIG.shader.vortexForceScale };
     uniform_velocity.gravityStrength = { value: CONFIG.shader.gravityStrength };
+    uniform_velocity.neighborSampleCount = {
+        value: Math.max(16, Math.min(256, Math.floor(CONFIG.performance?.neighborSampleCount || 128)))
+    };
 
 
 
