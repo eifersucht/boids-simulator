@@ -1,63 +1,63 @@
 # Flocking Simulation
 
-Simulacion de boids en Three.js con computacion GPU para velocidad/posicion y render de mallas en CPU.
+Boids simulation in Three.js with GPU computation for velocity/position and CPU mesh rendering.
 
-## Arranque local
+## Local run
 
-Desde la raiz del proyecto:
+From the project root:
 
 ```powershell
 python -m http.server 8000
 ```
 
-Atajo con script:
+Shortcut script:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/serve.ps1
 ```
 
-Abrir en navegador:
+Open in browser:
 
 ```text
 http://localhost:8000
 ```
 
-Verificacion rapida:
+Quick check:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/quick-check.ps1
 ```
 
-## Estructura principal
+## Main structure
 
-- `index.html`: carga de scripts base y entrada ESM.
-- `css/style.css`: estilos de HUD y panel de grabacion.
-- `js/main.js`: bootstrap, loop de render, sync de boids.
-- `js/config.js`: configuracion global de simulacion, boids, shader y depredadores.
-- `js/submodule/sceneSetup.js`: escena, camara, renderer y orbit controls.
-- `js/submodule/GPUComputeSystem.js`: variables de GPUComputationRenderer y uniforms.
-- `js/submodule/birdSystem.js`: boids visuales, lider, depredadores y HUD.
-- `js/submodule/uniformSync.js`: sincronizacion CPU->GPU de uniforms dinamicos.
-- `js/submodule/recording.js`: grabacion de video y controles de teclado.
-- `js/submodule/renderUtils.js`: utilidades de drift/viento.
-- `js/shaders/BoidVelocityFragmentShader.js`: comportamiento de flocking.
-- `js/shaders/BoidPositionFragmentShader.js`: integracion de posicion.
+- `index.html`: base script loading and ESM entry point.
+- `css/style.css`: HUD and recording panel styles.
+- `js/main.js`: bootstrap, render loop, boid sync.
+- `js/config.js`: global simulation, boid, shader, and predator configuration.
+- `js/submodule/sceneSetup.js`: scene, camera, renderer, and orbit controls.
+- `js/submodule/GPUComputeSystem.js`: GPUComputationRenderer variables and uniforms.
+- `js/submodule/birdSystem.js`: visual boids, leader, predators, and HUD.
+- `js/submodule/uniformSync.js`: CPU->GPU dynamic uniform synchronization.
+- `js/submodule/recording.js`: video recording and keyboard controls.
+- `js/submodule/renderUtils.js`: drift/wind utilities.
+- `js/shaders/BoidVelocityFragmentShader.js`: flocking behavior.
+- `js/shaders/BoidPositionFragmentShader.js`: position integration.
 
-## Controles
+## Controls
 
-- `+` / `-`: subir/bajar velocidad del lider.
-- `R`: reset de velocidad del lider.
-- `L`: mostrar/ocultar lider.
-- `P`: activar/desactivar depredadores.
-- `V`: iniciar grabacion.
-- `S`: detener grabacion.
+- `+` / `-`: increase/decrease leader speed.
+- `R`: reset leader speed.
+- `L`: show/hide leader.
+- `P`: enable/disable predators.
+- `V`: start recording.
+- `S`: stop recording.
 
-## Notas tecnicas
+## Technical notes
 
-- La simulacion se calcula en GPU y la posicion final se lee cada frame para actualizar mallas.
-- `CONFIG.predator.maxCount` define el tamano de arreglo de depredadores en shader.
-- El HUD permite cambiar cantidad de boids, velocidad global, tamano y estado de depredadores.
-- El selector `Modo de rendimiento` en HUD ajusta `CONFIG.performance` en runtime:
-  - `Calidad`: readback completo.
-  - `Balanceado`: readback cada 2 frames.
-  - `Rendimiento`: readback cada 3 frames.
+- Simulation runs on GPU; final positions are read each frame to update meshes.
+- `CONFIG.predator.maxCount` defines predator array size in the shader.
+- HUD lets you change boid count, global speed, size, and predator state.
+- `Performance mode` in HUD updates `CONFIG.performance` at runtime:
+  - `Quality`: full readback.
+  - `Balanced`: readback every 2 frames.
+  - `Performance`: readback every 3 frames.

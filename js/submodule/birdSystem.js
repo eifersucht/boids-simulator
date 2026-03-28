@@ -1,14 +1,14 @@
 // js/submodule/birdSystem.js
 
-// Importar sistema de computación GPU y shaders necesarios
+// Import GPU compute system and required shaders
 import { CONFIG } from '../config.js';
 import { uniform_velocity } from './GPUComputeSystem.js';
 
-// Arrays y objetos globales para boids, líder y depredador
+// Global arrays/objects for boids, leader, and predators
 let birdMeshes = [];
 let leaderMesh;
 
-// Vectores de posición/velocidad del líder y depredador
+// Leader and predator position/velocity vectors
 let leaderPosition;
 let leaderVelocity;
 let leaderAcceleration;
@@ -18,46 +18,46 @@ let predatorPositions = [];
 let predatorVelocities = [];
 let predatorConfigs = [];
 
-// Temporizadores internos para cambios de dirección
+// Internal timers for direction changes
 let leaderChangeTimer = 0;
 let predatorChangeTimers = [];
 
-// Parámetros de estado de la simulación
-let leaderSpeedMultiplier = 1.0;    // Multiplicador de velocidad del líder
-let leaderVisible = false;         // Visibilidad del líder (inicialmente oculto)
-let boidSpeedMultiplier = CONFIG.boids.speedDefault;   // Velocidad general de los boids (multiplicador)
+// Simulation state parameters
+let leaderSpeedMultiplier = 1.0;    // Leader speed multiplier
+let leaderVisible = false;         // Leader visibility (initially hidden)
+let boidSpeedMultiplier = CONFIG.boids.speedDefault;   // Global boid speed multiplier
 
-// Límite de movimiento (caja de simulación)
+// Movement limit (simulation box)
 const bounds = CONFIG.simulation?.bounds ?? CONFIG.bounds ?? 600;
 
-// Geometría y material compartidos para las aves (boids)
+// Shared geometry and material for boids
 let boidGeometry;
 let boidMaterial;
-let currentBoidSize = CONFIG.boids.sizeDefault;  // Tamaño actual (radio) de los boids
+let currentBoidSize = CONFIG.boids.sizeDefault;  // Current boid size (radius)
 
-// Referencias al renderer y a la escena, para añadir/eliminar boids dinámicamente
+// Scene/renderer refs for dynamic boid changes
 let rendererRef;
 let hudElements = null;
 
 /**
- * Inicializa las entidades de la simulación (boids, líder, depredador) y configura eventos.
- * @param {THREE.Scene} scene - La escena Three.js donde añadir los objetos.
- * @param {THREE.WebGLRenderer} renderer - El renderer, necesario para operaciones de GPU dinámicas.
+  * Initialize simulation entities (boids, leader, predators) and event handlers.
+  * @param {THREE.Scene} scene - Three.js scene where objects are added.
+  * @param {THREE.WebGLRenderer} renderer - Renderer needed for dynamic GPU operations.
  */
 function initBirds(scene, renderer) {
-    // Almacenar referencias de escena y renderer para uso posterior
+    // Store scene/renderer references for later use
     rendererRef = renderer;
 
-    // Determinar color inicial para los boids.
+    // Resolve initial boid color.
     const initialColor = new THREE.Color(0x111111);
 
-    // Crear geometría y material para boids (reutilizados por todas las aves)
+    // Create boid geometry/material reused by all boids
     boidGeometry = new THREE.SphereGeometry(currentBoidSize, 8, 8);
     boidMaterial = new THREE.MeshLambertMaterial({ color: initialColor });
 
-    // Obtener número inicial de boids desde la etiqueta 'birds' (definida en main.js)
+    // Get initial boid count from 'birds' label (set in main.js)
     const initialBoids = parseInt(document.getElementById('birds')?.innerText) || (64 * 64);
-    // Crear las mallas de boids iniciales y agregarlas a la escena
+    // Create initial boid meshes and add them to scene
     for (let i = 0; i < initialBoids; i++) {
         const boidMesh = new THREE.Mesh(boidGeometry, boidMaterial);
         boidMesh.matrixAutoUpdate = true;
@@ -65,16 +65,16 @@ function initBirds(scene, renderer) {
         birdMeshes.push(boidMesh);
     }
 
-    // Crear líder (cubo rojo) y añadirlo a la escena
+    // Create leader (red box) and add to scene
     const leaderGeometry = new THREE.BoxGeometry(10, 5, 3);
     const leaderMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
     leaderMesh = new THREE.Mesh(leaderGeometry, leaderMaterial);
     leaderMesh.matrixAutoUpdate = true;
     scene.add(leaderMesh);
     leaderMesh.visible = false;
-    leaderVisible = false;  // sincronizar estado del líder con su visibilidad
+    leaderVisible = false;  // Keep leader state aligned with mesh visibility
 
-    // Crear depredadores (esferas naranjas) y añadirlos a la escena
+    // Create predators (orange spheres) and add them to scene
     const predatorGeometry = new THREE.SphereGeometry(8.0, 16, 16);
     const predatorMaterial = new THREE.MeshStandardMaterial({
         color: 0xff8800,
@@ -84,7 +84,7 @@ function initBirds(scene, renderer) {
         opacity: 1.0
     });
     const basePredatorConfig = {
-        name: 'Depredador',
+        name: 'Predator',
         enabled: true,
         visible: false,
         aggression: 2.0,
@@ -104,7 +104,7 @@ function initBirds(scene, renderer) {
         const cfg = {
             ...basePredatorConfig,
             ...entry,
-            name: entry.name || `Depredador ${index + 1}`,
+            name: entry.name || `Predator ${index + 1}`,
             startPosition: { ...basePredatorConfig.startPosition, ...(entry.startPosition || {}) },
             noiseScale: { ...basePredatorConfig.noiseScale, ...(entry.noiseScale || {}) }
         };
@@ -128,7 +128,7 @@ function initBirds(scene, renderer) {
         return cfg;
     });
 
-    // Inicializar vectores de estado del líder y depredador
+    // Initialize leader and predator state vectors
     leaderPosition = new THREE.Vector3();
     leaderVelocity = new THREE.Vector3(1, 0, 0).normalize().multiplyScalar(CONFIG.leader.speed);
     leaderAcceleration = new THREE.Vector3();
@@ -142,11 +142,11 @@ function initBirds(scene, renderer) {
     hud.id = 'hud';
 
     hud.innerHTML = `
-    <div>Controles:</div>
-    <div>+ / - : Aumentar / Disminuir velocidad líder</div>
-    <div>R : Resetear velocidad líder</div>
-    <div>L : Mostrar/Ocultar líder</div>
-    <div>P : Mostrar/Ocultar depredador</div>
+    <div>Controls:</div>
+    <div>+ / - : Increase / Decrease leader speed</div>
+    <div>R : Reset leader speed</div>
+    <div>L : Show/Hide leader</div>
+    <div>P : Toggle predators</div>
     <hr>
     <div id="speedInfo"></div>
     <div id="boidSpeedInfo"></div>
@@ -155,27 +155,27 @@ function initBirds(scene, renderer) {
     <div id="performanceInfo"></div>
     <hr>
     <div>
-        <label>Cantidad de boids:</label><br>
+        <label>Boid count:</label><br>
         <input type="number" id="boidCount" value="${birdMeshes.length}" min="1" max="10000">
-        <button id="applyBoidCount">Aplicar cambios</button><br><br>
+        <button id="applyBoidCount">Apply changes</button><br><br>
 
-        <label>Color del fondo:</label><br>
+        <label>Background color:</label><br>
         <input type="color" id="bgColor" value="#FFFFFF"><br><br>
 
-        <label>Tamaño de los boids:</label><br>
+        <label>Boid size:</label><br>
         <input type="number" id="boidSize" value="${CONFIG.boids.sizeDefault}" min="1" max="20" step="0.5"><br><br>
 
-        <label>Velocidad general de boids:</label><br>
+        <label>Global boid speed:</label><br>
         <input type="number" id="boidSpeed" value="${CONFIG.boids.speedDefault}" min="0.1" max="10" step="0.1"><br><br>
 
-        <label>Modo de rendimiento:</label><br>
+        <label>Performance mode:</label><br>
         <select id="performancePreset">
-            <option value="quality">Calidad</option>
-            <option value="balanced">Balanceado</option>
-            <option value="performance">Rendimiento</option>
+            <option value="quality">Quality</option>
+            <option value="balanced">Balanced</option>
+            <option value="performance">Performance</option>
         </select><br><br>
 
-        <div>Depredadores:</div>
+        <div>Predatores:</div>
         <div id="predatorsPanel"></div>
     </div>
     `;
@@ -236,7 +236,7 @@ function initBirds(scene, renderer) {
     }
     updateHUD();
 
-    // Eventos para los inputs nuevos
+    // Event handlers for UI inputs
     const bgColorInput = document.getElementById('bgColor');
     if (bgColorInput) {
         bgColorInput.addEventListener('input', (e) => {
@@ -261,10 +261,10 @@ function initBirds(scene, renderer) {
     document.getElementById('applyBoidCount').addEventListener('click', () => {
         const nuevoNumero = parseInt(document.getElementById('boidCount').value, 10);
         if (!Number.isFinite(nuevoNumero) || nuevoNumero < 1) {
-            alert('Cantidad de boids invalida.');
+            alert('Invalid boid count.');
             return;
         }
-        const confirmReload = confirm(`El navegador se va a reiniciar para aplicar el nuevo numero de boids (${nuevoNumero}). Desea continuar?`);
+        const confirmReload = confirm(`The browser will reload to apply the new boid count (${nuevoNumero}). Continue?`);
 
         if (confirmReload) {
             ajustarCantidadBoids(nuevoNumero);
@@ -308,10 +308,10 @@ function initBirds(scene, renderer) {
         });
     }
 
-    // Inicializar el valor de velocidad de los boids en el input
+    // Initialize boid speed input
     document.getElementById('boidSpeed').value = boidSpeedMultiplier.toFixed(1);
 
-    // Inicializar el color de fondo
+    // Initialize background color
     if (bgColorInput) {
         const initialBg = bgColorInput.value;
         document.body.style.backgroundColor = initialBg;
@@ -324,14 +324,14 @@ function initBirds(scene, renderer) {
         }
     }
 
-    // Crear botón de toggle para mostrar/ocultar el HUD
+    // Create HUD show/hide toggle button
     const toggleButton = document.createElement('div');
     toggleButton.id = 'hudToggle';
     toggleButton.innerHTML = '&#9776;'; // icono de "hamburguesa"
-    toggleButton.title = 'Mostrar/Ocultar controles';
+    toggleButton.title = 'Show/Hide controls';
     document.body.appendChild(toggleButton);
 
-    // Estado de visibilidad del HUD
+    // HUD visibility state
     let hudVisible = true;
         toggleButton.addEventListener('click', () => {
             const hudElem = document.getElementById('hud');
@@ -342,12 +342,12 @@ function initBirds(scene, renderer) {
         });
 }
 
-// Actualiza el movimiento del líder (boid que guía la bandada)
+// Update leader movement
 function updateLeader(delta) {
-    // Disminuir el temporizador de cambio de dirección del líder
+    // Decrease leader direction-change timer
     leaderChangeTimer -= delta;
     if (leaderChangeTimer <= 0) {
-        // Calcular una nueva dirección objetivo aleatoria para el líder
+        // Pick a new random target direction for leader
         leaderTargetDirection = new THREE.Vector3(
             (Math.random() - 0.5) * CONFIG.leader.targetScale.x,
             (Math.random() - 0.5) * CONFIG.leader.targetScale.y,
@@ -356,39 +356,39 @@ function updateLeader(delta) {
         leaderChangeTimer = CONFIG.leader.changeIntervalMin + Math.random() * CONFIG.leader.changeIntervalJitter;
     }
 
-    // Ajustar gradualmente la velocidad del líder hacia la dirección objetivo
+    // Smoothly steer leader velocity toward target direction
     leaderVelocity.lerp(
         leaderTargetDirection.clone().multiplyScalar(CONFIG.leader.speed),
         delta * CONFIG.leader.turnLerp
     );
 
-    // Calcular la aceleración del líder como el cambio de velocidad desde el último frame
+    // Compute leader acceleration from velocity delta
     leaderAcceleration.copy(leaderVelocity).sub(leaderMesh.userData.lastVelocity || new THREE.Vector3());
     leaderMesh.userData.lastVelocity = leaderVelocity.clone();
 
-    // Mover la posición del líder según su velocidad y multiplicador de velocidad
+    // Move leader based on velocity and speed multiplier
     leaderPosition.addScaledVector(leaderVelocity, delta * leaderSpeedMultiplier);
 
-    // Rebotar en los límites de la escena invirtiendo la velocidad si el líder sale del área
+    // Bounce at bounds by flipping velocity components
     if (leaderPosition.x > bounds || leaderPosition.x < -bounds) leaderVelocity.x *= -1;
     if (leaderPosition.y > bounds || leaderPosition.y < -bounds) leaderVelocity.y *= -1;
     if (leaderPosition.z > bounds || leaderPosition.z < -bounds) leaderVelocity.z *= -1;
 
-    // Actualizar la posición de la malla del líder
+    // Update leader mesh position
     leaderMesh.position.copy(leaderPosition);
 }
 
-// Actualiza el movimiento del depredador (que persigue a la bandada)
+// Update predator movement
 function updatePredators(delta) {
     if (predatorPositions.length === 0) return;
     for (let i = 0; i < predatorConfigs.length; i++) {
         const cfg = predatorConfigs[i];
         if (!cfg.enabled) continue;
 
-        // Disminuir el temporizador de cambio de dirección del depredador
+        // Decrease predator direction-change timer
         predatorChangeTimers[i] -= delta;
         if (predatorChangeTimers[i] <= 0) {
-            // Calcular el centro de la bandada (promedio de posiciones de todos los boids)
+            // Compute flock center (average boid position)
             if (birdMeshes.length === 0) {
                 continue;
             }
@@ -398,7 +398,7 @@ function updatePredators(delta) {
             }
             center.divideScalar(birdMeshes.length);
 
-            // Direccion deseada hacia el centro de la bandada, con ruido aleatorio
+            // Desired direction toward flock center plus random noise
             const desiredDirection = center.clone().sub(predatorPositions[i]).normalize();
             const noise = new THREE.Vector3(
                 (Math.random() - 0.5) * cfg.noiseScale.x,
@@ -407,22 +407,22 @@ function updatePredators(delta) {
             );
             const finalDirection = desiredDirection.clone().add(noise).normalize();
 
-            // Calcular velocidad base en función de la distancia al centro de la bandada
+            // Base speed based on distance to flock center
             const distanceToCenter = predatorPositions[i].distanceTo(center);
             const baseSpeed =
                 cfg.baseSpeed +
                 Math.min(distanceToCenter, cfg.distanceSpeedClamp) * cfg.distanceSpeedFactor;
-            // Asignar velocidad al depredador aplicando el multiplicador de agresividad
+            // Apply predator speed with aggression multiplier
             predatorVelocities[i].copy(finalDirection).multiplyScalar(baseSpeed * cfg.aggression);
 
-            // Reiniciar temporizador de cambio de dirección
+            // Reset direction-change timer
             predatorChangeTimers[i] = cfg.changeIntervalMin + Math.random() * cfg.changeIntervalJitter;
         }
 
-        // Actualizar posición del depredador según su velocidad
+        // Update predator position
         predatorPositions[i].addScaledVector(predatorVelocities[i], delta);
 
-        // Rebotar en los límites invirtiendo la velocidad del depredador si sale del área
+        // Bounce predator at bounds
         if (predatorPositions[i].x > bounds || predatorPositions[i].x < -bounds) {
             predatorVelocities[i].x *= -1;
         }
@@ -433,27 +433,27 @@ function updatePredators(delta) {
             predatorVelocities[i].z *= -1;
         }
 
-        // Actualizar la posición de la malla del depredador
+        // Update predator mesh position
         predatorMeshes[i].position.copy(predatorPositions[i]);
         predatorMeshes[i].visible = cfg.visible && cfg.enabled;
     }
 }
 
-// Actualiza la información mostrada en el HUD (velocidad del líder y visibilidad de líder/depredador)
+// Update HUD info (leader speed and visibility state)
 function updateHUD() {
     if (!hudElements) return;
     if (hudElements.speedInfo) {
-        hudElements.speedInfo.innerText = `Velocidad lider: ${leaderSpeedMultiplier.toFixed(2)}x`;
+        hudElements.speedInfo.innerText = `Leader speed: ${leaderSpeedMultiplier.toFixed(2)}x`;
     }
     if (hudElements.boidSpeedInfo) {
-        hudElements.boidSpeedInfo.innerText = `Velocidad boids: ${boidSpeedMultiplier.toFixed(2)}x`;
+        hudElements.boidSpeedInfo.innerText = `Boid speed: ${boidSpeedMultiplier.toFixed(2)}x`;
     }
     if (hudElements.leaderInfo) {
-        hudElements.leaderInfo.innerText = `Lider: ${leaderVisible ? 'Visible' : 'Oculto'}`;
+        hudElements.leaderInfo.innerText = `Leader: ${leaderVisible ? 'Visible' : 'Hidden'}`;
     }
     if (hudElements.predatorInfo) {
         const enabledCount = predatorConfigs.filter((cfg) => cfg.enabled).length;
-        hudElements.predatorInfo.innerText = `Depredadores activos: ${enabledCount}`;
+        hudElements.predatorInfo.innerText = `Predatores activos: ${enabledCount}`;
     }
 }
 
@@ -462,31 +462,31 @@ function updatePerformanceHUD(fps, frameMs) {
     hudElements.performanceInfo.innerText = `FPS: ${fps.toFixed(1)} | Frame: ${frameMs.toFixed(2)} ms`;
 }
 
-// Agrega o elimina boids dinámicamente en la escena y en la simulación según la nueva cantidad solicitada
+// Apply requested boid count by reloading with updated hash
 function ajustarCantidadBoids(nuevoNumero) {
     if (!Number.isFinite(nuevoNumero) || nuevoNumero < 1) return;
-    // Actualiza el indicador de cantidad de boids en la interfaz
+    // Update boid count label in UI
     const birdsLabel = document.getElementById('birds');
     if (birdsLabel) birdsLabel.innerText = nuevoNumero;
 
-    // Recargar la página automáticamente con el nuevo número como hash
+    // Reload page with new count encoded as hash
     const newHash = Math.ceil(Math.sqrt(nuevoNumero));
     window.location.hash = newHash; // establece el nuevo hash en la URL
-    window.location.reload(); // recarga la página
+    window.location.reload(); // Reload page.
 }
 
-// Cambia el tamaño (escala) de los boids en la escena según el valor proporcionado
+// Change boid mesh scale based on provided size
 function cambiarTamanoBoids(nuevoTamano) {
     if (nuevoTamano <= 0) return;
     currentBoidSize = nuevoTamano;
     const escala = nuevoTamano / CONFIG.boids.sizeDefault;
-    // Ajustar la escala de cada boid existente
+    // Update scale for each existing boid
     for (let i = 0; i < birdMeshes.length; i++) {
         birdMeshes[i].scale.set(escala, escala, escala);
     }
 }
 
-// Cambia la velocidad de los boids en la simulación (multiplicador de velocidad)
+// Change boid speed multiplier
 function cambiarVelocidadBoids(nuevaVelocidad) {
     boidSpeedMultiplier = nuevaVelocidad;
     if (uniform_velocity && uniform_velocity.boidSpeed) {
@@ -494,7 +494,7 @@ function cambiarVelocidadBoids(nuevaVelocidad) {
     }
     const input = document.getElementById('boidSpeed');
     if (input) input.value = boidSpeedMultiplier.toFixed(1);
-    updateHUD(); // <- Para que se refleje en el HUD al cambiar
+    updateHUD(); // <- Reflect value in HUD
 }
 
 function getActivePredatorPositions() {
@@ -507,7 +507,7 @@ function getActivePredatorPositions() {
     return active;
 }
 
-// Eventos de teclado globales para controlar velocidad del líder y visibilidad de líder/depredador
+// Global keyboard events for leader speed and visibility
 window.addEventListener('keydown', (event) => {
     const target = event.target;
     if (
@@ -520,26 +520,26 @@ window.addEventListener('keydown', (event) => {
         return;
     }
     if (event.key === '+' || (event.key === '=' && event.shiftKey)) {
-        // Aumentar velocidad del líder
+        // Increase leader speed
         leaderSpeedMultiplier += 0.1;
         if (leaderSpeedMultiplier > 10.0) leaderSpeedMultiplier = 10.0;
         updateHUD();
     } else if (event.key === '-') {
-        // Disminuir velocidad del líder
+        // Decrease leader speed
         leaderSpeedMultiplier -= 0.1;
         if (leaderSpeedMultiplier < 0.1) leaderSpeedMultiplier = 0.1;
         updateHUD();
     } else if (event.key === 'r' || event.key === 'R') {
-        // Resetear velocidad del líder a 1x
+        // Reset leader speed to 1x
         leaderSpeedMultiplier = 1.0;
         updateHUD();
     } else if (event.key === 'l' || event.key === 'L') {
-        // Mostrar/Ocultar líder
+        // Show/Hide leader
         leaderVisible = !leaderVisible;
         leaderMesh.visible = leaderVisible;
         updateHUD();
     } else if (event.key === 'p' || event.key === 'P') {
-        // Mostrar/Ocultar todos los depredadores
+        // Show/Hide all predators
         const anyEnabled = predatorConfigs.some((cfg) => cfg.enabled);
         const nextEnabled = !anyEnabled;
         predatorConfigs.forEach((cfg, index) => {
@@ -552,7 +552,7 @@ window.addEventListener('keydown', (event) => {
     }
 });
 
-// Exportar elementos necesarios para main.js
+// Export items used by main.js
 export {
     initBirds,
     birdMeshes,
@@ -564,3 +564,8 @@ export {
     updateLeader,
     updatePredators
 };
+
+
+
+
+

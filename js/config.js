@@ -56,7 +56,7 @@ export const CONFIG = {
     // Predator instances (each one can be enabled from HUD).
     predators: [
         {
-            name: 'Depredador 1',
+            name: 'Predator 1',
             enabled: true,
             visible: false,
             aggression: 2.0, // Increase => faster predator.
@@ -70,7 +70,7 @@ export const CONFIG = {
             changeIntervalJitter: 2.0 // Increase => more randomness in change timing.
         },
         {
-            name: 'Depredador 2',
+            name: 'Predator 2',
             enabled: false,
             visible: false,
             aggression: 2.0,

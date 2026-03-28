@@ -10,17 +10,17 @@ import { syncBoidUniforms } from './submodule/uniformSync.js';
 
 if (!Detector.webgl) Detector.addGetWebGLMessage();
 
-// Determinar la cantidad inicial de boids desde el hash de URL o el valor por defecto.
+// Resolve initial boid count from URL hash or default value.
 const hash = document.location.hash.substr(1);
 const defaultGridSize = CONFIG.simulation?.defaultGridSize ?? CONFIG.defaultGridSize ?? 64;
 const hashValue = hash ? parseInt(hash, 10) : defaultGridSize;
 const normalizedHash = Number.isFinite(hashValue) && hashValue > 0 ? hashValue : defaultGridSize;
 const initialBoidsCount = normalizedHash * normalizedHash;
-// Mostrar la cantidad inicial en el elemento indicador de boids
+// Show initial count in the boids label element.
 const birdsLabel = document.getElementById('birds');
 if (birdsLabel) birdsLabel.innerText = initialBoidsCount;
 
-// Calcular la resolución inicial para el GPUComputeRenderer (textura cuadrada que contenga a todos los boids)
+// Compute initial GPU texture resolution (square texture containing all boids).
 const initialResolution = Math.ceil(Math.sqrt(initialBoidsCount));
 
 let last = performance.now();
@@ -32,18 +32,18 @@ init();
 animate();
 
 function init() {
-    // Inicializar la escena 3D básica
+    // Initialize base 3D scene.
     initScene();
-    // Inicializar el sistema de computación GPU para la simulación de boids
+    // Initialize GPU computation system for boid simulation.
     initComputeRenderer(renderer, initialResolution, bounds);
     initRecording(renderer, CONFIG.recording.fps);
 
     uniform_velocity.boidSpeed.value = CONFIG.boids.speedDefault;
-    // Inicializar boids, líder y depredador en la escena, pasándole el renderer para gestión dinámica
+    // Initialize boids, leader, and predators in the scene.
     initBirds(scene, renderer);
-    // Crear botón para iniciar/detener grabación de vídeo
+    // Create recording start/stop button.
     createRecordingButton();
-    // Registrar eventos de teclado para grabación (tecla 'v' para iniciar, 's' para detener)
+    // Register keyboard events for recording ('v' start, 's' stop).
     document.addEventListener('keydown', onKeyDown, false);
     window.addEventListener('resize', onWindowResize, false);
 }
@@ -56,30 +56,30 @@ function animate() {
 function render() {
     frameCount += 1;
     const now = performance.now();
-    // Calcular intervalo de tiempo (delta) desde el último frame en segundos
+    // Compute delta time from previous frame in seconds.
     let delta = (now - last) / 1000;
     const maxDeltaSeconds = CONFIG.simulation?.maxDeltaSeconds ?? CONFIG.maxDeltaSeconds ?? 1;
-    if (delta > maxDeltaSeconds) delta = maxDeltaSeconds;  // Limitar delta para evitar saltos bruscos
+    if (delta > maxDeltaSeconds) delta = maxDeltaSeconds;  // Clamp delta to avoid large jumps.
     last = now;
     smoothedDelta = smoothedDelta * 0.9 + delta * 0.1;
     const fps = 1 / Math.max(smoothedDelta, 1e-6);
     const frameMs = delta * 1000;
     updatePerformanceHUD(fps, frameMs);
 
-    // Actualizar uniformes de tiempo en shaders de posición y velocidad de boids
+    // Update time uniforms in position/velocity shaders.
     uniform_position.clock.value = now;
     uniform_position.del_change.value = delta;
     uniform_velocity.clock.value = now;
     uniform_velocity.del_change.value = delta;
 
-    // Actualizar desvío (viento) global en las velocidades de boids
+    // Update global drift (wind) applied to boid velocities.
     driftUniformUpdater(uniform_velocity, now);
 
-    // Actualizar posición y estado del líder y depredador
+    // Update leader and predator state.
     updateLeader(delta);
     updatePredators(delta);
 
-    // Actualizar uniformes de posición del depredador y estado del líder para los shaders de boids
+    // Sync predator/leader uniforms for boid shaders.
     syncBoidUniforms({
         uniformVelocity: uniform_velocity,
         activePredators: getActivePredatorPositions(),
@@ -87,10 +87,10 @@ function render() {
         leaderPosition
     });
 
-    // Ejecutar la computación GPU para obtener nuevas posiciones y velocidades de boids
+    // Run GPU computation to get new boid positions and velocities.
     gpu_allocation.compute();
 
-    // Leer las posiciones calculadas de los boids desde la textura de posición GPU
+    // Read computed boid positions from GPU position texture.
     const optimizationEnabled = !!CONFIG.performance?.readbackOptimizationEnabled;
     const configuredStride = Math.max(1, Math.floor(CONFIG.performance?.readbackStride || 1));
     const stride = optimizationEnabled ? configuredStride : 1;
@@ -109,7 +109,7 @@ function render() {
             0, 0, width, height,
             readPixels
         );
-        // Actualizar la posición de cada boid en la escena utilizando los datos leídos
+        // Update each boid mesh position in scene using readback data.
         for (let i = 0; i < birdMeshes.length; i++) {
             const x = readPixels[i * 4];
             const y = readPixels[i * 4 + 1];
@@ -118,7 +118,7 @@ function render() {
         }
     }
 
-    // Renderizar la escena con la cámara principal
+    // Render scene with the main camera.
     renderer.render(scene, camera);
 }
 

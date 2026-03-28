@@ -1,10 +1,10 @@
-// No importamos OrbitControls, ya sabemos que está cargado globalmente
+// OrbitControls is loaded globally, no import needed.
 
 let scene, camera, renderer, controls;
 
 function initScene() {
     scene = new THREE.Scene();
-    scene.background = null; // <-- Fondo transparente real
+    scene.background = null; // Real transparent background.
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
@@ -17,8 +17,8 @@ function initScene() {
     );
     camera.position.set(600, 600, 600);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // <-- Alpha activado
-    renderer.setClearColor(0x000000, 0); // <-- Totalmente transparente
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // Alpha enabled.
+    renderer.setClearColor(0x000000, 0); // Fully transparent clear.
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     renderer.domElement.style.position = 'fixed';
     renderer.domElement.style.top = '0';
@@ -29,9 +29,9 @@ function initScene() {
 
     controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-    const angleOffset = Math.PI / 36; // 5 grados en radianes
-    controls.minPolarAngle = Math.PI / 2 - angleOffset; // 85 grados
-    controls.maxPolarAngle = Math.PI / 2 + angleOffset; // 95 grados
+    const angleOffset = Math.PI / 36; // 5 degrees in radians.
+    controls.minPolarAngle = Math.PI / 2 - angleOffset; // 85 degrees.
+    controls.maxPolarAngle = Math.PI / 2 + angleOffset; // 95 degrees.
 }
 
 function onWindowResize() {

@@ -15,7 +15,7 @@ function startRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') return;
     recordedChunks = [];
     if (!window.MediaRecorder) {
-        alert('MediaRecorder no esta disponible en este navegador.');
+        alert('MediaRecorder is not available in this browser.');
         return;
     }
     const stream = rendererRef.domElement.captureStream(recordingFps);
@@ -30,8 +30,8 @@ function startRecording() {
     try {
         mediaRecorder = new MediaRecorder(stream, options);
     } catch (error) {
-        console.error('No se pudo iniciar MediaRecorder:', error);
-        alert('No se pudo iniciar la grabacion en este navegador.');
+        console.error('Could not start MediaRecorder:', error);
+        alert('Could not start recording in this browser.');
         return;
     }
     mediaRecorder.ondataavailable = function(event) {
@@ -59,13 +59,13 @@ function startRecording() {
     recordingStartTime = Date.now();
     recordingTimerInterval = setInterval(updateRecordingTime, 1000);
     updateRecordingUI(true);
-    console.log('Grabacion iniciada');
+    console.log('Recording started');
 }
 
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
-        console.log('Grabacion detenida');
+        console.log('Recording stopped');
     }
 }
 
@@ -75,7 +75,7 @@ function createRecordingButton() {
 
     const button = document.createElement('button');
     button.id = 'startStopRecording';
-    button.innerText = 'Grabar';
+    button.innerText = 'Record';
 
     button.onclick = () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -99,9 +99,9 @@ function updateRecordingUI(isRecording) {
     if (!button || !info) return;
     if (isRecording) {
         button.innerHTML = 'Grabando...';
-        info.innerText = 'Duracion: 00:00';
+        info.innerText = 'Duration: 00:00';
     } else {
-        button.innerHTML = 'Grabar';
+        button.innerHTML = 'Record';
         info.innerText = '';
     }
 }
@@ -112,7 +112,7 @@ function updateRecordingTime() {
     const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
     const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
     const seconds = (elapsed % 60).toString().padStart(2, '0');
-    info.innerText = `Duracion: ${minutes}:${seconds}`;
+    info.innerText = `Duration: ${minutes}:${seconds}`;
 }
 
 function onRecordingKeyDown(event) {

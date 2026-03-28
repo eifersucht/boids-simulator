@@ -43,7 +43,7 @@ function initComputeRenderer(renderer, resolution, bounds) {
     uniform_velocity.globalDrift = { value: new THREE.Vector3() };
     uniform_velocity.leader = { value: new THREE.Vector3() };
 
-    // Nuevos uniforms para realismo dinámico
+    // Extra uniforms for dynamic realism.
     uniform_velocity.windField = { value: new THREE.Vector3() };
 
     uniform_velocity.vortexStrength = { value: 0.0 };
