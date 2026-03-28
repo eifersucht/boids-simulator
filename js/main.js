@@ -5,7 +5,7 @@ import { initScene, onWindowResize, scene, camera, renderer } from './submodule/
 import { CONFIG } from './config.js';
 import { initBirds, birdMeshes, updateLeader, updatePredators, leaderPosition, getActivePredatorPositions, updatePerformanceHUD } from './submodule/birdSystem.js';
 import { driftUniformUpdater } from './submodule/renderUtils.js';
-import { initComputeRenderer, createComputeSystem, gpu_allocation, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
+import { initComputeRenderer, gpu_allocation, position_variable, uniform_position, uniform_velocity, currentResolution } from './submodule/GPUComputeSystem.js';
 import { initRecording, createRecordingButton, onRecordingKeyDown, isRecordingActive } from './submodule/recording.js';
 import { syncBoidUniforms } from './submodule/uniformSync.js';
 
@@ -28,7 +28,6 @@ let frameCount = 0;
 let smoothedDelta = 1 / 60;
 const perfWindowSize = 180;
 const perfSamples = [];
-let extraFlock = null;
 
 function ensureInterpolationState(readbackStride) {
     const boidCount = birdMeshes.length;
@@ -86,79 +85,7 @@ function init() {
     // Register keyboard events for recording ('v' start, 's' stop).
     document.addEventListener('keydown', onKeyDown, false);
     window.addEventListener('resize', onWindowResize, false);
-    window.addEventListener('extraFlockChange', onExtraFlockChange);
     return true;
-}
-
-function createExtraFlock(config) {
-    const count = Math.max(16, Math.floor(config.count || 1024));
-    const resolution = Math.ceil(Math.sqrt(count));
-    const system = createComputeSystem(renderer, resolution, bounds);
-    system.uniform_velocity.boidSpeed.value = Math.max(0.1, config.speed || 1.0);
-    const geometry = new THREE.SphereGeometry(Math.max(0.5, config.size || 2.5), 8, 8);
-    const material = new THREE.MeshLambertMaterial({ color: config.color || '#1e293b' });
-    const meshes = [];
-    for (let i = 0; i < count; i++) {
-        const m = new THREE.Mesh(geometry, material);
-        m.matrixAutoUpdate = true;
-        scene.add(m);
-        meshes.push(m);
-    }
-    extraFlock = {
-        enabled: true,
-        count,
-        resolution,
-        system,
-        meshes,
-        geometry,
-        material,
-        frameCount: 0,
-        readPixelsBuffer: null
-    };
-}
-
-function removeExtraFlock() {
-    if (!extraFlock) return;
-    for (let i = 0; i < extraFlock.meshes.length; i++) {
-        scene.remove(extraFlock.meshes[i]);
-    }
-    extraFlock.geometry.dispose();
-    extraFlock.material.dispose();
-    extraFlock = null;
-}
-
-function updateExtraFlockConfig(config) {
-    if (!extraFlock) return;
-    extraFlock.system.uniform_velocity.boidSpeed.value = Math.max(0.1, config.speed || 1.0);
-    extraFlock.material.color.set(config.color || '#1e293b');
-    const nextSize = Math.max(0.5, config.size || 2.5);
-    if (Math.abs(nextSize - extraFlock.geometry.parameters.radius) > 1e-6) {
-        const nextGeometry = new THREE.SphereGeometry(nextSize, 8, 8);
-        for (let i = 0; i < extraFlock.meshes.length; i++) {
-            extraFlock.meshes[i].geometry = nextGeometry;
-        }
-        extraFlock.geometry.dispose();
-        extraFlock.geometry = nextGeometry;
-    }
-}
-
-function onExtraFlockChange(event) {
-    const cfg = event.detail || {};
-    if (!cfg.enabled) {
-        removeExtraFlock();
-        return;
-    }
-    const targetCount = Math.max(16, Math.floor(cfg.count || 1024));
-    if (!extraFlock) {
-        createExtraFlock(cfg);
-        return;
-    }
-    if (extraFlock.count !== targetCount) {
-        removeExtraFlock();
-        createExtraFlock(cfg);
-        return;
-    }
-    updateExtraFlockConfig(cfg);
 }
 
 function animate() {
@@ -304,35 +231,6 @@ function render() {
     });
 
     // Render scene with the main camera.
-    if (extraFlock) {
-        extraFlock.frameCount += 1;
-        const system = extraFlock.system;
-        system.uniform_position.clock.value = now;
-        system.uniform_position.del_change.value = delta;
-        system.uniform_velocity.clock.value = now;
-        system.uniform_velocity.del_change.value = delta;
-        driftUniformUpdater(system.uniform_velocity, now);
-        syncBoidUniforms({
-            uniformVelocity: system.uniform_velocity,
-            activePredators: getActivePredatorPositions(),
-            leaderPosition
-        });
-        system.gpu_allocation.compute();
-        if (!extraFlock.readPixelsBuffer || extraFlock.readPixelsBuffer.length !== extraFlock.resolution * extraFlock.resolution * 4) {
-            extraFlock.readPixelsBuffer = new Float32Array(extraFlock.resolution * extraFlock.resolution * 4);
-        }
-        renderer.readRenderTargetPixels(
-            system.gpu_allocation.getCurrentRenderTarget(system.position_variable),
-            0, 0, extraFlock.resolution, extraFlock.resolution,
-            extraFlock.readPixelsBuffer
-        );
-        for (let i = 0; i < extraFlock.meshes.length; i++) {
-            const x = extraFlock.readPixelsBuffer[i * 4];
-            const y = extraFlock.readPixelsBuffer[i * 4 + 1];
-            const z = extraFlock.readPixelsBuffer[i * 4 + 2];
-            extraFlock.meshes[i].position.set(x, y, z);
-        }
-    }
     renderer.render(scene, camera);
 }
 
