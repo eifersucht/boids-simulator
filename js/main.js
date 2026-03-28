@@ -8,13 +8,6 @@ import { initComputeRenderer, gpu_allocation, position_variable, uniform_positio
 import { initRecording, createRecordingButton, onRecordingKeyDown, isRecordingActive } from './submodule/recording.js';
 import { syncBoidUniforms } from './submodule/uniformSync.js';
 
-if (!Detector.webgl) {
-    Detector.addGetWebGLMessage();
-} else {
-    const started = init();
-    if (started) animate();
-}
-
 // Resolve initial boid count from URL hash or default value.
 const hash = document.location.hash.substr(1);
 const defaultGridSize = CONFIG.simulation?.defaultGridSize ?? CONFIG.defaultGridSize ?? 64;
@@ -32,6 +25,13 @@ let last = performance.now();
 const bounds = CONFIG.simulation?.bounds ?? CONFIG.bounds ?? 600;
 let frameCount = 0;
 let smoothedDelta = 1 / 60;
+
+if (!Detector.webgl) {
+    Detector.addGetWebGLMessage();
+} else {
+    const started = init();
+    if (started) animate();
+}
 
 function init() {
     // Initialize base 3D scene.
