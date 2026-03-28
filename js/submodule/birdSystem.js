@@ -38,6 +38,19 @@ let currentBoidSize = CONFIG.boids.sizeDefault;  // Current boid size (radius)
 // Scene/renderer refs for dynamic boid changes
 let rendererRef;
 let hudElements = null;
+let hudVisible = true;
+
+function setHudVisibility(nextVisible) {
+    hudVisible = !!nextVisible;
+    const hudElem = document.getElementById('hud');
+    if (hudElem) {
+        hudElem.classList.toggle('hud-collapsed', !hudVisible);
+    }
+}
+
+function toggleHudVisibility() {
+    setHudVisibility(!hudVisible);
+}
 
 /**
   * Initialize simulation entities (boids, leader, predators) and event handlers.
@@ -395,14 +408,10 @@ function initBirds(scene, renderer) {
     document.body.appendChild(toggleButton);
 
     // HUD visibility state
-    let hudVisible = true;
-        toggleButton.addEventListener('click', () => {
-            const hudElem = document.getElementById('hud');
-            if (hudElem) {
-                hudVisible = !hudVisible;
-                hudElem.classList.toggle('hud-collapsed', !hudVisible);
-            }
-        });
+    setHudVisibility(true);
+    toggleButton.addEventListener('click', () => {
+        toggleHudVisibility();
+    });
 }
 
 // Update leader movement
@@ -597,11 +606,7 @@ window.addEventListener('keydown', (event) => {
         return;
     }
     if (event.key === 'h' || event.key === 'H') {
-        const hudElem = document.getElementById('hud');
-        const toggle = document.getElementById('hudToggle');
-        if (hudElem && toggle) {
-            hudElem.classList.toggle('hud-collapsed');
-        }
+        toggleHudVisibility();
         return;
     }
     if (!leaderMesh) return;
