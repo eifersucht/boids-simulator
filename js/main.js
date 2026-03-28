@@ -26,6 +26,33 @@ let last = performance.now();
 const bounds = CONFIG.simulation?.bounds ?? CONFIG.bounds ?? 600;
 let frameCount = 0;
 let smoothedDelta = 1 / 60;
+const perfWindowSize = 180;
+const perfSamples = [];
+
+function ensureInterpolationState(readbackStride) {
+    const boidCount = birdMeshes.length;
+    const expectedLength = boidCount * 3;
+    if (!render.interpPrev || render.interpPrev.length !== expectedLength) {
+        render.interpPrev = new Float32Array(expectedLength);
+        render.interpTarget = new Float32Array(expectedLength);
+        render.interpCurrent = new Float32Array(expectedLength);
+        for (let i = 0; i < boidCount; i++) {
+            const i3 = i * 3;
+            const p = birdMeshes[i].position;
+            render.interpPrev[i3] = p.x;
+            render.interpPrev[i3 + 1] = p.y;
+            render.interpPrev[i3 + 2] = p.z;
+            render.interpTarget[i3] = p.x;
+            render.interpTarget[i3 + 1] = p.y;
+            render.interpTarget[i3 + 2] = p.z;
+            render.interpCurrent[i3] = p.x;
+            render.interpCurrent[i3 + 1] = p.y;
+            render.interpCurrent[i3 + 2] = p.z;
+        }
+        render.interpFrame = 0;
+        render.interpTotal = Math.max(1, readbackStride);
+    }
+}
 
 if (!Detector.webgl) {
     Detector.addGetWebGLMessage();
@@ -77,7 +104,9 @@ function render() {
     smoothedDelta = smoothedDelta * 0.9 + delta * 0.1;
     const fps = 1 / Math.max(smoothedDelta, 1e-6);
     const frameMs = delta * 1000;
-    updatePerformanceHUD(fps, frameMs);
+    let readbackMs = 0;
+    let meshSyncMs = 0;
+    let didReadback = false;
 
     // Update time uniforms in position/velocity shaders.
     uniform_position.clock.value = now;
@@ -110,25 +139,96 @@ function render() {
     const shouldReadback = frameCount === 1 || frameCount % readbackStride === 0;
 
     if (shouldReadback) {
+        didReadback = true;
         const width = currentResolution;
         const height = currentResolution;
         if (!render.readPixelsBuffer || render.readPixelsBuffer.length !== width * height * 4) {
             render.readPixelsBuffer = new Float32Array(width * height * 4);
         }
         const readPixels = render.readPixelsBuffer;
+        const readbackStart = performance.now();
         renderer.readRenderTargetPixels(
             gpu_allocation.getCurrentRenderTarget(position_variable),
             0, 0, width, height,
             readPixels
         );
-        // Update each boid mesh position in scene using readback data.
+        readbackMs = performance.now() - readbackStart;
+        const meshSyncStart = performance.now();
+        ensureInterpolationState(readbackStride);
+        render.interpTotal = Math.max(1, readbackStride);
+        render.interpFrame = 0;
+
         for (let i = 0; i < birdMeshes.length; i++) {
-            const x = readPixels[i * 4];
-            const y = readPixels[i * 4 + 1];
-            const z = readPixels[i * 4 + 2];
+            const i4 = i * 4;
+            const i3 = i * 3;
+            const x = readPixels[i4];
+            const y = readPixels[i4 + 1];
+            const z = readPixels[i4 + 2];
+            render.interpPrev[i3] = render.interpCurrent[i3];
+            render.interpPrev[i3 + 1] = render.interpCurrent[i3 + 1];
+            render.interpPrev[i3 + 2] = render.interpCurrent[i3 + 2];
+            render.interpTarget[i3] = x;
+            render.interpTarget[i3 + 1] = y;
+            render.interpTarget[i3 + 2] = z;
+        }
+
+        // In quality mode (stride 1), keep exact original behavior.
+        if (render.interpTotal === 1) {
+            for (let i = 0; i < birdMeshes.length; i++) {
+                const i3 = i * 3;
+                const x = render.interpTarget[i3];
+                const y = render.interpTarget[i3 + 1];
+                const z = render.interpTarget[i3 + 2];
+                render.interpCurrent[i3] = x;
+                render.interpCurrent[i3 + 1] = y;
+                render.interpCurrent[i3 + 2] = z;
+                birdMeshes[i].position.set(x, y, z);
+            }
+        }
+        meshSyncMs = performance.now() - meshSyncStart;
+    }
+
+    // Smooth mesh motion between GPU readbacks when stride > 1.
+    if (!didReadback && readbackStride > 1 && render.interpPrev && render.interpTarget) {
+        const meshSyncStart = performance.now();
+        render.interpFrame = Math.min(render.interpFrame + 1, render.interpTotal);
+        const t = render.interpFrame / render.interpTotal;
+        for (let i = 0; i < birdMeshes.length; i++) {
+            const i3 = i * 3;
+            const x = render.interpPrev[i3] + (render.interpTarget[i3] - render.interpPrev[i3]) * t;
+            const y = render.interpPrev[i3 + 1] + (render.interpTarget[i3 + 1] - render.interpPrev[i3 + 1]) * t;
+            const z = render.interpPrev[i3 + 2] + (render.interpTarget[i3 + 2] - render.interpPrev[i3 + 2]) * t;
+            render.interpCurrent[i3] = x;
+            render.interpCurrent[i3 + 1] = y;
+            render.interpCurrent[i3 + 2] = z;
             birdMeshes[i].position.set(x, y, z);
         }
+        meshSyncMs = performance.now() - meshSyncStart;
     }
+
+    perfSamples.push({
+        fps,
+        frameMs,
+        readbackMs,
+        meshSyncMs,
+        didReadback
+    });
+    if (perfSamples.length > perfWindowSize) perfSamples.shift();
+    const totalSamples = perfSamples.length;
+    const readbackSamples = perfSamples.filter((sample) => sample.didReadback);
+    const avg = (arr, key) => (arr.length ? arr.reduce((acc, v) => acc + v[key], 0) / arr.length : 0);
+    const avgFps = avg(perfSamples, 'fps');
+    const avgFrameMs = avg(perfSamples, 'frameMs');
+    const avgReadbackMs = avg(readbackSamples, 'readbackMs');
+    const avgMeshSyncMs = avg(readbackSamples, 'meshSyncMs');
+    const readbackRatio = totalSamples ? readbackSamples.length / totalSamples : 0;
+    updatePerformanceHUD(fps, frameMs, {
+        avgFps,
+        avgFrameMs,
+        avgReadbackMs,
+        avgMeshSyncMs,
+        readbackRatio
+    });
 
     // Render scene with the main camera.
     renderer.render(scene, camera);

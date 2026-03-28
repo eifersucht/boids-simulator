@@ -159,6 +159,7 @@ function initBirds(scene, renderer) {
         <div id="leaderInfo"></div>
         <div id="predatorInfo"></div>
         <div id="performanceInfo"></div>
+        <div id="performanceDetailInfo"></div>
     </div>
     <div class="hud-divider"></div>
     <div class="hud-field">
@@ -200,7 +201,8 @@ function initBirds(scene, renderer) {
         boidSpeedInfo: document.getElementById('boidSpeedInfo'),
         leaderInfo: document.getElementById('leaderInfo'),
         predatorInfo: document.getElementById('predatorInfo'),
-        performanceInfo: document.getElementById('performanceInfo')
+        performanceInfo: document.getElementById('performanceInfo'),
+        performanceDetailInfo: document.getElementById('performanceDetailInfo')
     };
     const predatorsPanel = document.getElementById('predatorsPanel');
     if (predatorsPanel) {
@@ -519,9 +521,22 @@ function updateHUD() {
     }
 }
 
-function updatePerformanceHUD(fps, frameMs) {
+function updatePerformanceHUD(fps, frameMs, perfWindowMetrics = null) {
     if (!hudElements || !hudElements.performanceInfo) return;
     hudElements.performanceInfo.innerText = `FPS: ${fps.toFixed(1)} | Frame: ${frameMs.toFixed(2)} ms`;
+    if (hudElements.performanceDetailInfo && perfWindowMetrics) {
+        const {
+            avgFps,
+            avgFrameMs,
+            avgReadbackMs,
+            avgMeshSyncMs,
+            readbackRatio
+        } = perfWindowMetrics;
+        hudElements.performanceDetailInfo.innerText =
+            `Avg(${Math.round(readbackRatio * 100)}% rb): ` +
+            `${avgFps.toFixed(1)} FPS, ${avgFrameMs.toFixed(2)} ms | ` +
+            `RB ${avgReadbackMs.toFixed(2)} ms, Sync ${avgMeshSyncMs.toFixed(2)} ms`;
+    }
 }
 
 // Apply requested boid count by reloading with updated hash
