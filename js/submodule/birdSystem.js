@@ -39,6 +39,8 @@ let currentBoidSize = CONFIG.boids.sizeDefault;  // Current boid size (radius)
 let rendererRef;
 let hudElements = null;
 let hudVisible = true;
+let perfOverlayLastUpdate = 0;
+let perfOverlayLastText = '';
 
 function setHudVisibility(nextVisible) {
     hudVisible = !!nextVisible;
@@ -165,65 +167,132 @@ function initBirds(scene, renderer) {
         <div class="hud-subtitle">Realtime Controls</div>
     </div>
     <div class="hud-shortcuts">+/- speed, R reset, L leader, P predators, H panel</div>
-    <div class="hud-divider"></div>
-    <div class="hud-stats">
-        <div id="speedInfo"></div>
-        <div id="boidSpeedInfo"></div>
-        <div id="leaderInfo"></div>
-        <div id="predatorInfo"></div>
-        <div id="performanceInfo"></div>
-        <div id="performanceDetailInfo"></div>
-    </div>
-    <div class="hud-divider"></div>
-    <div class="hud-field">
-        <label for="boidCount">Boid count</label>
-        <div class="hud-inline">
-            <input type="number" id="boidCount" value="${birdMeshes.length}" min="1" max="10000">
-            <button id="applyBoidCount">Apply</button>
+
+    <section class="hud-section">
+        <div class="hud-section-title">Status</div>
+        <div class="hud-stats">
+            <div id="speedInfo"></div>
+            <div id="boidSpeedInfo"></div>
+            <div id="leaderInfo"></div>
+            <div id="predatorInfo"></div>
         </div>
-    </div>
-    <div class="hud-field">
-        <label for="bgColor">Background</label>
-        <input type="color" id="bgColor" value="#FFFFFF">
-    </div>
-    <div class="hud-field">
-        <label for="boidSize">Boid size</label>
-        <input type="number" id="boidSize" value="${CONFIG.boids.sizeDefault}" min="1" max="20" step="0.5">
-    </div>
-    <div class="hud-field">
-        <label for="boidSpeed">Global boid speed</label>
-        <input type="number" id="boidSpeed" value="${CONFIG.boids.speedDefault}" min="0.1" max="10" step="0.1">
-    </div>
-    <div class="hud-field">
-        <label for="performancePreset">Performance mode</label>
-        <select id="performancePreset">
-            <option value="quality">Quality</option>
-            <option value="balanced">Balanced</option>
-            <option value="performance">Performance</option>
-        </select>
-    </div>
-    <div class="hud-field">
-        <label for="neighborSampleCount">Neighbor samples</label>
-        <select id="neighborSampleCount">
-            <option value="96">96</option>
-            <option value="128">128</option>
-            <option value="160">160</option>
-        </select>
-    </div>
-    <div class="hud-field">
-        <label>Predators</label>
+    </section>
+
+    <section class="hud-section">
+        <div class="hud-section-title">Simulation</div>
+        <div class="hud-field">
+            <div class="hud-label-row">
+                <label for="boidCount">Boid count</label>
+                <button type="button" class="info-btn" data-info="Total number of boids. Internally this value is mapped to the nearest square grid (n x n).">i</button>
+            </div>
+            <div class="hud-inline">
+                <input type="number" id="boidCount" value="${birdMeshes.length}" min="1" max="10000">
+                <button id="applyBoidCount">Apply</button>
+            </div>
+        </div>
+        <div class="hud-field">
+            <div class="hud-label-row">
+                <label for="bgColor">Background</label>
+                <button type="button" class="info-btn" data-info="Changes page and renderer background color.">i</button>
+            </div>
+            <input type="color" id="bgColor" value="#FFFFFF">
+        </div>
+        <div class="hud-field">
+            <div class="hud-label-row">
+                <label for="boidSize">Boid size</label>
+                <button type="button" class="info-btn" data-info="Visual boid size only. Flocking behavior remains unchanged.">i</button>
+            </div>
+            <input type="number" id="boidSize" value="${CONFIG.boids.sizeDefault}" min="1" max="20" step="0.5">
+        </div>
+        <div class="hud-field">
+            <div class="hud-label-row">
+                <label for="boidSpeed">Global boid speed</label>
+                <button type="button" class="info-btn" data-info="Global speed multiplier applied to boid velocities.">i</button>
+            </div>
+            <input type="number" id="boidSpeed" value="${CONFIG.boids.speedDefault}" min="0.1" max="10" step="0.1">
+        </div>
+    </section>
+
+    <section class="hud-section">
+        <div class="hud-section-title">Performance</div>
+        <div class="hud-field">
+            <div class="hud-label-row">
+                <label for="performancePreset">Mode</label>
+                <button type="button" class="info-btn" data-info="Quality favors stability and precision, Performance favors FPS.">i</button>
+            </div>
+            <select id="performancePreset">
+                <option value="quality">Quality</option>
+                <option value="balanced">Balanced</option>
+                <option value="performance">Performance</option>
+            </select>
+        </div>
+        <div class="hud-field">
+            <div class="hud-label-row">
+                <label for="neighborSampleCount">Neighbor samples</label>
+                <button type="button" class="info-btn" data-info="Sampled neighbors in shader. Higher values improve fidelity but cost more GPU.">i</button>
+            </div>
+            <select id="neighborSampleCount">
+                <option value="96">96</option>
+                <option value="128">128</option>
+                <option value="160">160</option>
+            </select>
+        </div>
+        <div class="hud-field hud-toggles">
+            <label class="hud-inline-toggle"><input type="checkbox" id="showPerfOverlay"> Show FPS panel</label>
+            <label class="hud-inline-toggle"><input type="checkbox" id="showRecordingButton" checked> Show recording button</label>
+        </div>
+    </section>
+
+    <section class="hud-section">
+        <div class="hud-section-title">Predators <button type="button" class="info-btn" data-info="Configure each predator: enabled, visibility, aggression and color.">i</button></div>
         <div id="predatorsPanel"></div>
-    </div>
+    </section>
     `;
 
     document.body.appendChild(hud);
+    const infoPopup = document.createElement('div');
+    infoPopup.id = 'infoPopup';
+    infoPopup.className = 'info-popup-hidden';
+    infoPopup.innerHTML = `
+        <div class="info-popup-card">
+            <div id="infoPopupText"></div>
+            <button type="button" id="infoPopupClose">Close</button>
+        </div>
+    `;
+    document.body.appendChild(infoPopup);
+
+    const perfOverlay = document.createElement('div');
+    perfOverlay.id = 'perfOverlay';
+    perfOverlay.innerText = 'FPS: -- | Frame: -- | Avg: --';
+    perfOverlay.classList.add('perf-overlay-hidden');
+    document.body.appendChild(perfOverlay);
+
+    const infoButtons = hud.querySelectorAll('.info-btn');
+    infoButtons.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const infoText = document.getElementById('infoPopupText');
+            const msg = btn.getAttribute('data-info') || 'No additional information available.';
+            if (infoText) infoText.innerText = msg;
+            infoPopup.classList.remove('info-popup-hidden');
+        });
+    });
+    const infoPopupClose = document.getElementById('infoPopupClose');
+    if (infoPopupClose) {
+        infoPopupClose.addEventListener('click', () => {
+            infoPopup.classList.add('info-popup-hidden');
+        });
+    }
+    infoPopup.addEventListener('click', (e) => {
+        if (e.target === infoPopup) infoPopup.classList.add('info-popup-hidden');
+    });
+
     hudElements = {
         speedInfo: document.getElementById('speedInfo'),
         boidSpeedInfo: document.getElementById('boidSpeedInfo'),
         leaderInfo: document.getElementById('leaderInfo'),
-        predatorInfo: document.getElementById('predatorInfo'),
-        performanceInfo: document.getElementById('performanceInfo'),
-        performanceDetailInfo: document.getElementById('performanceDetailInfo')
+        predatorInfo: document.getElementById('predatorInfo')
     };
     const predatorsPanel = document.getElementById('predatorsPanel');
     if (predatorsPanel) {
@@ -234,11 +303,13 @@ function initBirds(scene, renderer) {
 
             const toggle = document.createElement('input');
             toggle.type = 'checkbox';
+            toggle.className = 'ui-checkbox';
             toggle.checked = !!cfg.enabled;
             toggle.id = `predatorToggle_${index}`;
 
             const visibleToggle = document.createElement('input');
             visibleToggle.type = 'checkbox';
+            visibleToggle.className = 'ui-checkbox';
             visibleToggle.checked = !!cfg.visible;
             visibleToggle.id = `predatorVisible_${index}`;
 
@@ -250,13 +321,21 @@ function initBirds(scene, renderer) {
             visibleLabel.htmlFor = visibleToggle.id;
             visibleLabel.innerText = ' Visible';
 
-            const speed = document.createElement('input');
-            speed.type = 'number';
-            speed.min = '0';
-            speed.max = '10';
-            speed.step = '0.1';
-            speed.value = cfg.aggression.toFixed(1);
-            speed.className = 'predator-speed-input';
+            const speedRange = document.createElement('input');
+            speedRange.type = 'range';
+            speedRange.min = '0';
+            speedRange.max = '10';
+            speedRange.step = '0.1';
+            speedRange.value = cfg.aggression.toFixed(1);
+            speedRange.className = 'predator-speed-range';
+
+            const speedNumber = document.createElement('input');
+            speedNumber.type = 'number';
+            speedNumber.min = '0';
+            speedNumber.max = '10';
+            speedNumber.step = '0.1';
+            speedNumber.value = cfg.aggression.toFixed(1);
+            speedNumber.className = 'predator-speed-input';
 
             const color = document.createElement('input');
             color.type = 'color';
@@ -277,13 +356,16 @@ function initBirds(scene, renderer) {
                 updateHUD();
             });
 
-            speed.addEventListener('input', (e) => {
-                const value = parseFloat(e.target.value);
+            const applyAggression = (rawValue) => {
+                const value = parseFloat(rawValue);
                 if (!Number.isFinite(value) || value < 0) return;
-                cfg.aggression = value;
-                e.target.value = cfg.aggression.toFixed(1);
+                cfg.aggression = Math.min(10, value);
+                speedRange.value = cfg.aggression.toFixed(1);
+                speedNumber.value = cfg.aggression.toFixed(1);
                 updateHUD();
-            });
+            };
+            speedRange.addEventListener('input', (e) => applyAggression(e.target.value));
+            speedNumber.addEventListener('input', (e) => applyAggression(e.target.value));
 
             color.addEventListener('input', (e) => {
                 cfg.color = e.target.value;
@@ -293,24 +375,43 @@ function initBirds(scene, renderer) {
                 }
             });
 
+            const topRow = document.createElement('div');
+            topRow.className = 'predator-top-row';
             const nameGroup = document.createElement('div');
             nameGroup.className = 'predator-name-group';
             nameGroup.appendChild(toggle);
             nameGroup.appendChild(label);
+            topRow.appendChild(nameGroup);
 
+            const visibilityRow = document.createElement('div');
+            visibilityRow.className = 'predator-visibility-row';
             const visibleGroup = document.createElement('div');
             visibleGroup.className = 'predator-visible-group';
             visibleGroup.appendChild(visibleToggle);
             visibleGroup.appendChild(visibleLabel);
+            visibilityRow.appendChild(visibleGroup);
 
-            const controlsGroup = document.createElement('div');
-            controlsGroup.className = 'predator-controls-group';
-            controlsGroup.appendChild(speed);
-            controlsGroup.appendChild(color);
+            const aggressionRow = document.createElement('div');
+            aggressionRow.className = 'predator-aggression-row';
+            const aggressionLabel = document.createElement('span');
+            aggressionLabel.className = 'predator-inline-label';
+            aggressionLabel.innerText = 'Aggression';
+            aggressionRow.appendChild(aggressionLabel);
+            aggressionRow.appendChild(speedRange);
+            aggressionRow.appendChild(speedNumber);
 
-            row.appendChild(nameGroup);
-            row.appendChild(visibleGroup);
-            row.appendChild(controlsGroup);
+            const colorRow = document.createElement('div');
+            colorRow.className = 'predator-color-row';
+            const colorLabel = document.createElement('span');
+            colorLabel.className = 'predator-inline-label';
+            colorLabel.innerText = 'Color';
+            colorRow.appendChild(colorLabel);
+            colorRow.appendChild(color);
+
+            row.appendChild(topRow);
+            row.appendChild(visibilityRow);
+            row.appendChild(aggressionRow);
+            row.appendChild(colorRow);
             predatorsPanel.appendChild(row);
         });
     }
@@ -421,6 +522,26 @@ function initBirds(scene, renderer) {
                 if (performancePreset) performancePreset.value = 'balanced';
             }
         });
+    }
+    const showPerfOverlay = document.getElementById('showPerfOverlay');
+    if (showPerfOverlay) {
+        showPerfOverlay.addEventListener('change', (e) => {
+            perfOverlay.classList.toggle('perf-overlay-hidden', !e.target.checked);
+        });
+    }
+    const showRecordingButton = document.getElementById('showRecordingButton');
+    const setRecordingButtonVisibility = (isVisible) => {
+        const recordingContainer = document.getElementById('recordingContainer');
+        if (recordingContainer) {
+            recordingContainer.classList.toggle('recording-hidden', !isVisible);
+        }
+    };
+    if (showRecordingButton) {
+        showRecordingButton.addEventListener('change', (e) => {
+            setRecordingButtonVisibility(e.target.checked);
+        });
+        // recordingContainer may be created shortly after HUD init.
+        setTimeout(() => setRecordingButtonVisibility(showRecordingButton.checked), 0);
     }
 
     // Initialize boid speed input
@@ -570,9 +691,12 @@ function updateHUD() {
 }
 
 function updatePerformanceHUD(fps, frameMs, perfWindowMetrics = null) {
-    if (!hudElements || !hudElements.performanceInfo) return;
-    hudElements.performanceInfo.innerText = `FPS: ${fps.toFixed(1)} | Frame: ${frameMs.toFixed(2)} ms`;
-    if (hudElements.performanceDetailInfo && perfWindowMetrics) {
+    const perfOverlay = document.getElementById('perfOverlay');
+    if (!perfOverlay) return;
+    const now = performance.now();
+    const updateIntervalMs = 250;
+    if (now - perfOverlayLastUpdate < updateIntervalMs) return;
+    if (perfWindowMetrics) {
         const {
             avgFps,
             avgFrameMs,
@@ -580,12 +704,23 @@ function updatePerformanceHUD(fps, frameMs, perfWindowMetrics = null) {
             avgMeshSyncMs,
             readbackRatio
         } = perfWindowMetrics;
-        hudElements.performanceDetailInfo.innerText =
-            `Avg(${Math.round(readbackRatio * 100)}% rb): ` +
-            `${avgFps.toFixed(1)} FPS, ${avgFrameMs.toFixed(2)} ms | ` +
-            `RB ${avgReadbackMs.toFixed(2)} ms, Sync ${avgMeshSyncMs.toFixed(2)} ms | ` +
-            `NS ${Math.floor(CONFIG.performance?.neighborSampleCount || 128)}`;
+        const nextText =
+            `FPS ${fps.toFixed(1)} | Frame ${frameMs.toFixed(2)} ms | ` +
+            `Avg ${avgFps.toFixed(1)} FPS ${avgFrameMs.toFixed(2)} ms | ` +
+            `RB ${avgReadbackMs.toFixed(2)} ms | Sync ${avgMeshSyncMs.toFixed(2)} ms | ` +
+            `Readback ${Math.round(readbackRatio * 100)}% | NS ${Math.floor(CONFIG.performance?.neighborSampleCount || 128)}`;
+        if (nextText !== perfOverlayLastText) {
+            perfOverlay.innerText = nextText;
+            perfOverlayLastText = nextText;
+        }
+    } else {
+        const nextText = `FPS ${fps.toFixed(1)} | Frame ${frameMs.toFixed(2)} ms`;
+        if (nextText !== perfOverlayLastText) {
+            perfOverlay.innerText = nextText;
+            perfOverlayLastText = nextText;
+        }
     }
+    perfOverlayLastUpdate = now;
 }
 
 // Apply requested boid count by reloading with updated hash
