@@ -3,9 +3,11 @@
 import { CONFIG } from '../config.js';
 
 const MAX_PREDATORS = Math.max(1, Math.floor(CONFIG.predator?.maxCount || 1));
+const NEIGHBOR_SAMPLES = Math.max(16, Math.floor(CONFIG.performance?.neighborSampleCount || 128));
 
 export const BoidVelocityFragmentShader = `
     #define MAX_PREDATORS ${MAX_PREDATORS}
+    #define NEIGHBOR_SAMPLES ${NEIGHBOR_SAMPLES}
     uniform float clock;
     uniform float del_change;
     uniform float seperation_distance;
@@ -32,8 +34,6 @@ export const BoidVelocityFragmentShader = `
     uniform float vortexForceScale;
     uniform float gravityStrength;
 
-    const float width = resolution.x;
-    const float height = resolution.y;
     float zoneRadius;
     float zoneRadiusSquared;
     float separationThresh;
@@ -41,6 +41,15 @@ export const BoidVelocityFragmentShader = `
         float lenSq = dot(v, v);
         if (lenSq < 1e-8) return vec3(0.0);
         return v * inversesqrt(lenSq);
+    }
+    float hash11(float p) {
+        p = fract(p * 0.1031);
+        p *= p + 33.33;
+        p *= p + p;
+        return fract(p);
+    }
+    vec2 hash22(float p) {
+        return vec2(hash11(p + 1.7), hash11(p + 9.2));
     }
     void main() {
         zoneRadius = seperation_distance + alignment_distance + cohesion_distance;
@@ -75,24 +84,23 @@ export const BoidVelocityFragmentShader = `
         vec3 averageVelocity = vec3(0.0);
         float neighborCount = 0.0;
 
-        for (float y = 0.0; y < height; y++) {
-            for (float x = 0.0; x < width; x++) {
-                vec2 ref = vec2(x + 0.5, y + 0.5) / resolution.xy;
-                vec3 otherPos = texture2D(PositionTexture, ref).xyz;
-                vec3 otherVel = texture2D(VelocityTexture, ref).xyz;
+        float seed = dot(birdPosition, vec3(0.173, 0.319, 0.271)) + clock * 0.0001;
+        for (int i = 0; i < NEIGHBOR_SAMPLES; i++) {
+            vec2 ref = hash22(seed + float(i) * 1.61803);
+            vec3 otherPos = texture2D(PositionTexture, ref).xyz;
+            vec3 otherVel = texture2D(VelocityTexture, ref).xyz;
 
-                vec3 offset = otherPos - birdPosition;
-                offset.y *= 0.5;
-                float distSq = dot(offset, offset);
+            vec3 offset = otherPos - birdPosition;
+            offset.y *= 0.5;
+            float distSq = dot(offset, offset);
 
-                if (distSq > 0.0001 && distSq < zoneRadiusSquared) {
-                    neighborhoodCenter += otherPos;
-                    averageVelocity += otherVel;
-                    neighborCount += 1.0;
+            if (distSq > 0.0001 && distSq < zoneRadiusSquared) {
+                neighborhoodCenter += otherPos;
+                averageVelocity += otherVel;
+                neighborCount += 1.0;
 
-                    if (distSq < separationThresh * zoneRadiusSquared) {
-                        velocity -= safeNormalize(offset) * del_change * separationStrength;
-                    }
+                if (distSq < separationThresh * zoneRadiusSquared) {
+                    velocity -= safeNormalize(offset) * del_change * separationStrength;
                 }
             }
         }
