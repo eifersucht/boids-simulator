@@ -76,17 +76,11 @@ function initBirds(scene, renderer) {
 
     // Create predators (orange spheres) and add them to scene
     const predatorGeometry = new THREE.SphereGeometry(8.0, 16, 16);
-    const predatorMaterial = new THREE.MeshStandardMaterial({
-        color: 0xff8800,
-        roughness: 0.5,
-        metalness: 0.1,
-        transparent: true,
-        opacity: 1.0
-    });
     const basePredatorConfig = {
         name: 'Predator',
         enabled: true,
         visible: false,
+        color: '#ff8800',
         aggression: 2.0,
         startPosition: { x: 200, y: 0, z: 0 },
         randomVelocityScale: 50,
@@ -100,15 +94,26 @@ function initBirds(scene, renderer) {
     const predatorList = CONFIG.predators && CONFIG.predators.length > 0
         ? CONFIG.predators
         : [basePredatorConfig];
+    const predatorColorPalette = ['#ff8800', '#ff5a36', '#ffb347', '#e07a1f'];
     predatorConfigs = predatorList.map((entry, index) => {
         const cfg = {
             ...basePredatorConfig,
             ...entry,
             name: entry.name || `Predator ${index + 1}`,
+            color: entry.color || predatorColorPalette[index % predatorColorPalette.length],
             startPosition: { ...basePredatorConfig.startPosition, ...(entry.startPosition || {}) },
             noiseScale: { ...basePredatorConfig.noiseScale, ...(entry.noiseScale || {}) }
         };
-        const mesh = new THREE.Mesh(predatorGeometry, predatorMaterial);
+        const mesh = new THREE.Mesh(
+            predatorGeometry,
+            new THREE.MeshStandardMaterial({
+                color: cfg.color,
+                roughness: 0.5,
+                metalness: 0.1,
+                transparent: true,
+                opacity: 1.0
+            })
+        );
         mesh.matrixAutoUpdate = true;
         scene.add(mesh);
         mesh.visible = cfg.visible && cfg.enabled;
@@ -142,40 +147,49 @@ function initBirds(scene, renderer) {
     hud.id = 'hud';
 
     hud.innerHTML = `
-    <div>Controls:</div>
-    <div>+ / - : Increase / Decrease leader speed</div>
-    <div>R : Reset leader speed</div>
-    <div>L : Show/Hide leader</div>
-    <div>P : Toggle predators</div>
-    <hr>
-    <div id="speedInfo"></div>
-    <div id="boidSpeedInfo"></div>
-    <div id="leaderInfo"></div>
-    <div id="predatorInfo"></div>
-    <div id="performanceInfo"></div>
-    <hr>
-    <div>
-        <label>Boid count:</label><br>
-        <input type="number" id="boidCount" value="${birdMeshes.length}" min="1" max="10000">
-        <button id="applyBoidCount">Apply changes</button><br><br>
-
-        <label>Background color:</label><br>
-        <input type="color" id="bgColor" value="#FFFFFF"><br><br>
-
-        <label>Boid size:</label><br>
-        <input type="number" id="boidSize" value="${CONFIG.boids.sizeDefault}" min="1" max="20" step="0.5"><br><br>
-
-        <label>Global boid speed:</label><br>
-        <input type="number" id="boidSpeed" value="${CONFIG.boids.speedDefault}" min="0.1" max="10" step="0.1"><br><br>
-
-        <label>Performance mode:</label><br>
+    <div class="hud-title-row">
+        <div class="hud-title">FLOCK LAB</div>
+        <div class="hud-subtitle">Realtime Controls</div>
+    </div>
+    <div class="hud-shortcuts">+/- speed, R reset, L leader, P predators, H panel</div>
+    <div class="hud-divider"></div>
+    <div class="hud-stats">
+        <div id="speedInfo"></div>
+        <div id="boidSpeedInfo"></div>
+        <div id="leaderInfo"></div>
+        <div id="predatorInfo"></div>
+        <div id="performanceInfo"></div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="hud-field">
+        <label for="boidCount">Boid count</label>
+        <div class="hud-inline">
+            <input type="number" id="boidCount" value="${birdMeshes.length}" min="1" max="10000">
+            <button id="applyBoidCount">Apply</button>
+        </div>
+    </div>
+    <div class="hud-field">
+        <label for="bgColor">Background</label>
+        <input type="color" id="bgColor" value="#FFFFFF">
+    </div>
+    <div class="hud-field">
+        <label for="boidSize">Boid size</label>
+        <input type="number" id="boidSize" value="${CONFIG.boids.sizeDefault}" min="1" max="20" step="0.5">
+    </div>
+    <div class="hud-field">
+        <label for="boidSpeed">Global boid speed</label>
+        <input type="number" id="boidSpeed" value="${CONFIG.boids.speedDefault}" min="0.1" max="10" step="0.1">
+    </div>
+    <div class="hud-field">
+        <label for="performancePreset">Performance mode</label>
         <select id="performancePreset">
             <option value="quality">Quality</option>
             <option value="balanced">Balanced</option>
             <option value="performance">Performance</option>
-        </select><br><br>
-
-        <div>Predatores:</div>
+        </select>
+    </div>
+    <div class="hud-field">
+        <label>Predators</label>
         <div id="predatorsPanel"></div>
     </div>
     `;
@@ -200,9 +214,18 @@ function initBirds(scene, renderer) {
             toggle.checked = !!cfg.enabled;
             toggle.id = `predatorToggle_${index}`;
 
+            const visibleToggle = document.createElement('input');
+            visibleToggle.type = 'checkbox';
+            visibleToggle.checked = !!cfg.visible;
+            visibleToggle.id = `predatorVisible_${index}`;
+
             const label = document.createElement('label');
             label.htmlFor = toggle.id;
             label.innerText = ` ${cfg.name}`;
+
+            const visibleLabel = document.createElement('label');
+            visibleLabel.htmlFor = visibleToggle.id;
+            visibleLabel.innerText = ' Visible';
 
             const speed = document.createElement('input');
             speed.type = 'number';
@@ -212,8 +235,19 @@ function initBirds(scene, renderer) {
             speed.value = cfg.aggression.toFixed(1);
             speed.className = 'predator-speed-input';
 
+            const color = document.createElement('input');
+            color.type = 'color';
+            color.value = cfg.color;
+            color.className = 'predator-color-input';
+
             toggle.addEventListener('change', (e) => {
                 cfg.enabled = e.target.checked;
+                const mesh = predatorMeshes[index];
+                if (mesh) mesh.visible = cfg.visible && cfg.enabled;
+                updateHUD();
+            });
+
+            visibleToggle.addEventListener('change', (e) => {
                 cfg.visible = e.target.checked;
                 const mesh = predatorMeshes[index];
                 if (mesh) mesh.visible = cfg.visible && cfg.enabled;
@@ -228,9 +262,20 @@ function initBirds(scene, renderer) {
                 updateHUD();
             });
 
+            color.addEventListener('input', (e) => {
+                cfg.color = e.target.value;
+                const mesh = predatorMeshes[index];
+                if (mesh && mesh.material && mesh.material.color) {
+                    mesh.material.color.set(cfg.color);
+                }
+            });
+
             row.appendChild(toggle);
             row.appendChild(label);
+            row.appendChild(visibleToggle);
+            row.appendChild(visibleLabel);
             row.appendChild(speed);
+            row.appendChild(color);
             predatorsPanel.appendChild(row);
         });
     }
@@ -331,7 +376,7 @@ function initBirds(scene, renderer) {
     // Create HUD show/hide toggle button
     const toggleButton = document.createElement('div');
     toggleButton.id = 'hudToggle';
-    toggleButton.innerHTML = '&#9776;'; // icono de "hamburguesa"
+    toggleButton.innerText = 'UI';
     toggleButton.title = 'Show/Hide controls';
     document.body.appendChild(toggleButton);
 
@@ -341,7 +386,7 @@ function initBirds(scene, renderer) {
             const hudElem = document.getElementById('hud');
             if (hudElem) {
                 hudVisible = !hudVisible;
-                hudElem.classList.toggle('hidden', !hudVisible);
+                hudElem.classList.toggle('hud-collapsed', !hudVisible);
             }
         });
 }
@@ -457,7 +502,8 @@ function updateHUD() {
     }
     if (hudElements.predatorInfo) {
         const enabledCount = predatorConfigs.filter((cfg) => cfg.enabled).length;
-        hudElements.predatorInfo.innerText = `Predatores activos: ${enabledCount}`;
+        const visibleCount = predatorConfigs.filter((cfg) => cfg.enabled && cfg.visible).length;
+        hudElements.predatorInfo.innerText = `Predators enabled: ${enabledCount} | visible: ${visibleCount}`;
     }
 }
 
@@ -523,6 +569,14 @@ window.addEventListener('keydown', (event) => {
     ) {
         return;
     }
+    if (event.key === 'h' || event.key === 'H') {
+        const hudElem = document.getElementById('hud');
+        const toggle = document.getElementById('hudToggle');
+        if (hudElem && toggle) {
+            hudElem.classList.toggle('hud-collapsed');
+        }
+        return;
+    }
     if (!leaderMesh) return;
     if (event.key === '+' || (event.key === '=' && event.shiftKey)) {
         // Increase leader speed
@@ -544,12 +598,11 @@ window.addEventListener('keydown', (event) => {
         leaderMesh.visible = leaderVisible;
         updateHUD();
     } else if (event.key === 'p' || event.key === 'P') {
-        // Show/Hide all predators
+        // Enable/disable all predators
         const anyEnabled = predatorConfigs.some((cfg) => cfg.enabled);
         const nextEnabled = !anyEnabled;
         predatorConfigs.forEach((cfg, index) => {
             cfg.enabled = nextEnabled;
-            cfg.visible = nextEnabled;
             const mesh = predatorMeshes[index];
             if (mesh) mesh.visible = cfg.visible && cfg.enabled;
             const toggle = document.getElementById(`predatorToggle_${index}`);
